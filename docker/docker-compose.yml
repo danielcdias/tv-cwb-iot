@@ -1,0 +1,75 @@
+version: '3'
+volumes:
+  static_files:
+    driver: local
+networks:
+  web:
+    external: true
+services:
+  db:
+    image: mariadb:10.4
+    env_file:
+      - ./db/db.env
+    #environment:
+    #  - MYSQL_ROOT_PASSWORD=changeme
+    #  - MYSQL_USER=changeme
+    #  - MYSQL_DATABASE=changeme
+    #  - MYSQL_PASSWORD=changeme
+    #  - TERM=xterm
+    restart: unless-stopped
+    volumes:
+      - ./db/mariadb:/var/lib/mysql
+    command: 'mysqld --innodb-flush-method=fsync'
+  app:
+    build: app
+    restart: unless-stopped
+    working_dir: /app
+    env_file:
+      - ./app/app.env
+    #environment:
+    #  - IOT_DJANGO_SECRET_KEY=changeme
+    #  - IOT_DJANGO_ALLOWED_HOSTS=changeme
+    #  - IOT_DJANGO_DB_CONFIG=changeme
+    #  - IOT_DJANGO_EMAIL_HOST=changeme
+    #  - IOT_DJANGO_EMAIL_PORT=changeme
+    #  - IOT_DJANGO_EMAIL_HOST_USER=changeme
+    #  - IOT_DJANGO_EMAIL_HOST_PASSWORD=changeme
+    #  - IOT_DJANGO_EMAIL_USE_TLS=changeme
+    #  - IOT_DJANGO_SU_USER=changeme
+    #  - IOT_DJANGO_SU_EMAIL=changeme
+    #  - IOT_DJANGO_SU_PASS=changeme
+    #  - MYSQL_USER=changeme
+    #  - MYSQL_DATABASE=changeme
+    #  - MYSQL_PASSWORD=changeme
+    command: /bin/sh ./start-django.sh
+    depends_on:
+      - db
+    volumes:
+      - static_files:/app/static
+    labels:
+      traefik.frontend.rule: Host:tv-cwb-iot.terracoverde.eco.br
+      traefik.frontend.priority: '1'
+      traefik.port: '8000'
+      traefik.enable: 'true'
+      traefik.docker.network: 'web'
+      traefik.frontend.redirect.entryPoint: 'https'
+    networks:
+      - web
+      - default
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
+    restart: unless-stopped
+    volumes:
+      - ./db/phpmyadmin/sessions:/sessions
+    labels:
+      traefik.frontend.rule: Host:db.tv-cwb-iot.terracoverde.eco.br
+      traefik.frontend.priority: '1'
+      traefik.port: '80'
+      traefik.enable: 'true'
+      traefik.docker.network: 'web'
+      traefik.frontend.redirect.entryPoint: 'https'
+    networks:
+      - web
+      - default

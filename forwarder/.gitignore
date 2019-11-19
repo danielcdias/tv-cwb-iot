@@ -1,0 +1,7 @@
+*.bak
+*.pyc
+**/.idea/
+*.sqlite3
+log/
+db/
+/*.json

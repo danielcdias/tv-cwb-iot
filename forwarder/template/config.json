@@ -1,0 +1,51 @@
+{
+    "logging": {
+        "name": "change-me",
+        "folder": "./log",
+        "filename": "change-me.log",
+        "console_level": "DEBUG",
+        "file_level": "DEBUG"
+    },
+    "db": {
+       "folder": "change-me",
+        "file": "change-me"
+    },
+    "mqtt": {
+        "connection": {
+            "host": "change-me",
+            "port": 0,
+            "timeout": 60,
+            "client-id": "change-me"
+        },
+        "topics": {
+            "status": "change-me",
+            "command": "change-me"
+        },
+        "commands": {
+            "timestamp": "change-me"
+        },
+        "status": {
+            "startup": "change-me",
+            "timestamp-update-request": "change-me"
+        }
+    },
+    "web-service": {
+        "base_url": "change-me",
+        "get_token_service": "change-me",
+        "username": "change-me",
+        "password": "change-me",
+        "message_receiver_service": "change-me",
+        "timeout": 30
+    },
+    "email": {
+        "host": "change-me",
+        "port": 0,
+        "user": "change-me",
+        "pass": "change-me",
+        "use_tls": false,
+        "subject": "change-me",
+        "from": "change-me",
+        "to": "change-me",
+        "notification_timeout": 60
+    }
+}

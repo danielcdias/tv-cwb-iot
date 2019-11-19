@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+{% load bootstrap4 %}
+{# model/templates/model/control_board.html #}
+{% load render_table from django_tables2 %}
+<html>
+    <head>
+        {% load static %}
+        <meta charset="UTF-8">
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+        <link rel="shortcut icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
+        <link rel="icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+        <title>Terraço Verde CWB - Comparação modelos intensivo Vs extensivo</title>
+        <style>
+            h3 {
+               color: #337AB7;
+               font-weight: bold;
+            }
+            h4 {
+               color: #337AB7;
+            }
+            body {
+                padding: 10px;
+            }
+            input {
+                margin:0 0.25em;
+            }
+            tr:hover td {
+               background-color: #337AB7;
+               color: #ffffff
+            }
+            tr:nth-child(even) {
+               background-color: #F0F0F0;
+            }
+        </style>
+        <script>
+            function reset_filter() {
+                document.getElementById('id_control_board__nickname').value='';
+                document.getElementById('id_control_board__prototype_side').selectedIndex = 0;
+                document.getElementById('id_timestamp_0').value='';
+                document.getElementById('id_timestamp_1').value='';
+                document.getElementById('id_status_received').value='';
+                document.getElementById('page_filter').submit();
+            }
+        </script>
+    </head>
+    <body>
+        <h3>Terraço Verde - Comparação Modelo Intensivo Vs Extensivo</h3>
+        <h4>Leituras de placas controladoras (<a href="/">Ver Sensores</a>)</h4>
+        <br/>
+        <p>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</p>
+        <br/>
+        {% if filter %}
+            <form id="page_filter" action="" method="get" class="form form-inline">
+                {% bootstrap_form filter.form layout='inline' %}
+                {% bootstrap_button 'filter' %}
+                <button class="btn btn-secondary" type="reset" onclick="reset_filter()">reset</button>
+            </form><br/>
+        {% endif %}
+        {% render_table table %}
+    </body>
+</html>
