@@ -1,0 +1,243 @@
+*.a
+*.o
+*.bak
+*.bin
+*.map
+*.log
+*.elf
+*.zip
+*.d
+*.ihex
+*.pyc
+*.redbee-econotag
+*.econotag 
+*.native
+*.z1
+*.minimal-net
+*.sky
+*.wismote
+*.esb
+*.avr-raven
+*.exp5438
+*.mbxxx
+*.win32
+*.apple2enh
+*.atarixl
+*.c128
+*.c64
+*.cc2538dk
+*.zoul
+*.jn516x
+*.srf06-cc26xx
+*.ev-aducrf101mkxz
+*.report
+summary
+*.summary
+*.runerr
+*.runlog
+*.faillog
+*.orig
+*~
+.DS_Store
+obj_*
+symbols.*
+doc/html
+doc/latex
+patches-*
+tools/tunslip
+tools/tunslip6
+build
+tools/coffee-manager/build/
+tools/cooja/dist/
+tools/collect-view/build/
+tools/collect-view/dist/
+COOJA.testlog
+tools/cooja/apps/mrm/lib/
+tools/cooja/apps/mspsim/lib/
+tools/cooja/apps/powertracker/lib/
+tools/cooja/apps/serial_socket/lib/
+tools/coffee-manager/coffee.jar
+tools/cooja/apps/avrora/lib/cooja_avrora.jar
+tools/cooja/apps/collect-view/cooja-collect-view.jar
+
+# sdcc build artifacts
+contiki-cc2530dk.lib
+*.ihx
+*.hex
+*.mem
+*.lk
+*.omf
+*.cdb
+*.banks
+*.cc2530dk
+
+# VC++ build artifacts
+*.exp
+*.ilk
+*.lib
+*.pdb
+*.prg
+*.dsc
+
+#cc65 build artifacts
+*.s
+*.eth
+*.dsk
+*.po
+*.atr
+*.d64
+*.d71
+*.d81
+
+# Cooja Build Artifacts
+*.cooja
+
+#regression tests artifacts
+*.testlog
+*.log.prog
+regression-tests/[0-9][0-9]-*/report
+regression-tests/[0-9][0-9]-*/org/
+
+# rl78 build artifacts
+*.eval-adf7xxxmb4z
+*.eval-adf7xxxmb4z.srec
+
+# cscope files
+cscope.*
+
+# vim swap files
+*.swp
+*.swo
+
+# x86 UEFI files
+cpu/x86/uefi/Makefile.uefi
+cpu/x86/uefi/edk2
+
+# galileo bsp files
+platform/galileo/bsp/libc/Makefile.libc
+platform/galileo/bsp/libc/i586-elf/
+platform/galileo/bsp/libc/newlib-2.2.0-1*
+platform/galileo/bsp/grub/src/
+platform/galileo/bsp/grub/bin/
+
+# galileo build and debug artefacts
+*.galileo
+*.galileo.dll
+*.galileo.efi
+LOG_OPENOCD
+
+# nRF52 build artifacts
+*.jlink
+*.nrf52dk
+
+# PyCharm
+.idea
+venv
+
+# CCS project files
+.
+.project
+.cproject
+.settings
+
+#
+# Google Flutter (copied from https://github.com/flutter/flutter/blob/master/.gitignore)
+#
+
+# Miscellaneous
+*.class
+*.lock
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# Visual Studio Code related
+.vscode/
+
+# Flutter repo-specific
+/bin/cache/
+/bin/mingit/
+/dev/benchmarks/mega_gallery/
+/dev/bots/.recipe_deps
+/dev/bots/android_tools/
+/dev/docs/doc/
+/dev/docs/flutter.docs.zip
+/dev/docs/lib/
+/dev/docs/pubspec.yaml
+/packages/flutter/coverage/
+version
+
+# packages file containing multi-root paths
+.packages.generated
+
+# Flutter/Dart/Pub related
+**/doc/api/
+.dart_tool/
+.flutter-plugins
+.packages
+.pub-cache/
+.pub/
+build/
+flutter_*.png
+linked_*.ds
+unlinked.ds
+unlinked_spec.ds
+
+# Android related
+**/android/**/gradle-wrapper.jar
+**/android/.gradle
+**/android/captures/
+**/android/gradlew
+**/android/gradlew.bat
+**/android/local.properties
+**/android/**/GeneratedPluginRegistrant.java
+**/android/key.properties
+*.jks
+
+# iOS/XCode related
+**/ios/**/*.mode1v3
+**/ios/**/*.mode2v3
+**/ios/**/*.moved-aside
+**/ios/**/*.pbxuser
+**/ios/**/*.perspectivev3
+**/ios/**/*sync/
+**/ios/**/.sconsign.dblite
+**/ios/**/.tags*
+**/ios/**/.vagrant/
+**/ios/**/DerivedData/
+**/ios/**/Icon?
+**/ios/**/Pods/
+**/ios/**/.symlinks/
+**/ios/**/profile
+**/ios/**/xcuserdata
+**/ios/.generated/
+**/ios/Flutter/App.framework
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
+
+# Coverage
+coverage/
+
+# Exceptions to above rules.
+!**/ios/**/default.mode1v3
+!**/ios/**/default.mode2v3
+!**/ios/**/default.pbxuser
+!**/ios/**/default.perspectivev3
+!/packages/flutter_tools/test/data/dart_dependencies_test/**/.packages
+
