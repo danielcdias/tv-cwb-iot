@@ -9,4 +9,5 @@ As pastas do projeto estão organizadas da seguinte forma:
 - *docker*: configuração para executar o servidor de aplicação (Django/Python) e o banco de dados (MariaDB) em um docker composer.
 - *forwarder*: aplicação em Python responsável por receber os dados dos microcontroladores e encaminhá-los ao servidor de aplicação.
 - *mobile*: aplicação móvel desenvolvida em Google Flutter para apresentar os dados lidos dos sensores (ainda não implementado).
+- *pcb*: projeto de placas impressas utilizadas no projeto.
 - *server*: servidor de aplicação desenvolvido em Django/Python, responsável por receber, tratar, armazenar e apresentar os dados lidos pela rede de sensores.
