@@ -18,7 +18,7 @@ SITE_ROOT = os.path.dirname(os.path.realpath(__file__))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Default DB configuration
-DEFAULT_DB_CONFIG = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': 'db.sqlite3', }
+DEFAULT_DB_CONFIG = {'ENGINE': 'django.db.backends.sqlite3', 'NAME': 'tv-cwb-iot.db', }
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/

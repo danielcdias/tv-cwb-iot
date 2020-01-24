@@ -1,5 +1,6 @@
 *.pyc
 **/.idea/
 *.sqlite3
+*.db
 /static
 /logs
