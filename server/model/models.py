@@ -68,6 +68,16 @@ class ControlBoardEvent(models.Model):
 
     objects = models.Manager()
 
+    @property
+    def status_translated(self):
+        result = {}
+        try:
+            translation = BoardStatusInfo(str(self.status_received))
+            return translation.to_dict
+        except ValueError:
+            pass
+        return result
+
     def __str__(self):
         return "ControlBoard {} event received - timestamp: {}, status: {}".format(self.control_board.nickname,
                                                                                    self.timestamp,
@@ -133,3 +143,114 @@ class NotificationUser(models.Model):
     notify_errors = models.BooleanField(default=False, verbose_name="Send errors notifications")
 
     objects = models.Manager()
+
+
+class BoardStatusInfo:
+    BOARD_STATUS_ARRAY_REGEX = "^[N,R][S][0,1,9]{3}[O,P][0-9]{1,4}[P][0-9]{1,2}[A][0-9]{1,5}$"
+
+    PROCESS_RUNNING = 1
+    PROCESS_STOPPED = 0
+
+    MQTTSN_PROCESS = 0
+    PUBLISH_PROCESS = 1
+    CTRL_SUBSCRIPTION_PROCESS = 2
+    WATCHDOG_PROCESS = 3
+    REBOOT_PROCESS = 4
+    GREEN_LED_PROCESS = 5
+    RED_LED_PROCESS = 6
+    REQUEST_TIMESTAMP_UPDATE_PROCESS = 7
+    INTERRUPTION_SENSOR_RESET_INTERVAL_PROCESS = 8
+    RAIN_SENSOR_DRAIN_PROCESS = 9
+    MOISTURE_SENSOR_PROCESS = 10
+    INTERRUPTION_SENSOR_PROCESS = 11
+    REPORT_BOARD_GENERAL_STATUS_PROCESS = 12
+    DETECT_TEST_MODE_PROCESS = 13
+
+    ProcessNames = (
+        (MQTTSN_PROCESS, "Processo MQTT-SN", PROCESS_RUNNING),
+        (PUBLISH_PROCESS, "Processo de publish", PROCESS_STOPPED),
+        (CTRL_SUBSCRIPTION_PROCESS, "Processo de controle de assinatura", PROCESS_STOPPED),
+        (WATCHDOG_PROCESS, "Processo Watchdog", PROCESS_RUNNING),
+        (REBOOT_PROCESS, "Processo de reboot", PROCESS_STOPPED),
+        (GREEN_LED_PROCESS, "Processo de controle LED verde", PROCESS_RUNNING),
+        (RED_LED_PROCESS, "Processo de controle LED vermelho", PROCESS_RUNNING),
+        (REQUEST_TIMESTAMP_UPDATE_PROCESS, "Processo para requisição de atualização de data/hora", PROCESS_RUNNING),
+        (INTERRUPTION_SENSOR_RESET_INTERVAL_PROCESS, "Processo de zeramentos dos sensores por interrupção", PROCESS_RUNNING),
+        (RAIN_SENSOR_DRAIN_PROCESS, "Processo de leitura do sensor de ralo", PROCESS_RUNNING),
+        (MOISTURE_SENSOR_PROCESS, "Processo de leitura do sensor de umidade", PROCESS_RUNNING),
+        (INTERRUPTION_SENSOR_PROCESS, "Processo de leitura do sensor por interrupção", PROCESS_RUNNING),
+        (REPORT_BOARD_GENERAL_STATUS_PROCESS, "Processo de reporte de status da controladora", PROCESS_RUNNING),
+        (DETECT_TEST_MODE_PROCESS, "Processo de detecção do modo teste", PROCESS_STOPPED),
+    )
+
+    @staticmethod
+    def bitfield(n: int):
+        return [1 if digit == '1' else 0 for digit in bin(n)[2:]]
+
+    @staticmethod
+    def validate_board_status_array(data: str) -> bool:
+        result = False
+        pattern = re.compile(BoardStatusInfo.BOARD_STATUS_ARRAY_REGEX)
+        if pattern.match(data):
+            result = True
+        return result
+
+    def __init__(self, data: str):
+        if len(data) >= 11:
+            if BoardStatusInfo.validate_board_status_array(data):
+                self._board_state = data[0]
+                self._sensors_array = [0, 0, 0]
+                for i in range(2, 5):
+                    self._sensors_array[i - 2] = int(data[i])
+                self._irq_events_count = int(data[6:data.find("P", 6)])
+                self._process_count = int(data[data.find("P", 6) + 1:data.find("A", 7)])
+                self._process_bitmap = int(data[data.find("A") + 1:])
+            else:
+                raise ValueError("Invalid status format. The string informed is not well formatted.")
+        else:
+            raise ValueError("Invalid status format. String size must be larger than 11 characters.")
+
+    @property
+    def board_state(self):
+        result = "Undefined"
+        if self._board_state == "N":
+            result = "Normal"
+        elif self._board_state == "R":
+            result = "Reset"
+        return result
+
+    @property
+    def sensors_state_array(self):
+        result = ["U", "U", "U"]
+        for i in range(2, 5):
+            result[i - 2] = "O" if self._sensors_array[i - 2] == 0 else "D" if self._sensors_array[
+                                                                                     i - 2] == 1 else "E"
+        return result
+
+    @property
+    def irq_events_count(self):
+        return self._irq_events_count
+
+    @property
+    def board_process_count(self):
+        return self._process_count
+
+    @property
+    def board_process_bitmap(self):
+        result = []
+        bitmap = BoardStatusInfo.bitfield(self._process_bitmap)
+        for i in range(0, 14):
+            process = {"name": BoardStatusInfo.ProcessNames[i][1],
+                       "state": "E" if BoardStatusInfo.ProcessNames[i][2] != bitmap[i]
+                       else "X" if bitmap[i] == BoardStatusInfo.PROCESS_RUNNING else "P"}
+            result.append(process)
+        return result
+
+    @property
+    def to_dict(self):
+        return {"board_state": self.board_state,
+                "sensors_state_array": self.sensors_state_array,
+                "irq_events_count": self.irq_events_count,
+                "board_process_count": self.board_process_count,
+                "board_process_bitmap": self.board_process_bitmap
+                }

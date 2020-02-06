@@ -13,6 +13,9 @@
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
         <title>Terraço Verde CWB - Comparação modelos intensivo Vs extensivo</title>
         <style>
+            h2 {
+               color: #337AB7;
+            }
             h3 {
                color: #337AB7;
                font-weight: bold;
@@ -33,6 +36,9 @@
             tr:nth-child(even) {
                background-color: #F0F0F0;
             }
+            tr.status_table_header:nth-child(even) {
+               background-color: #FFFFFF;
+            }
         </style>
         <script>
             function reset_filter() {
@@ -50,6 +56,58 @@
         <h4>Leituras de placas controladoras (<a href="/">Ver Sensores</a>)</h4>
         <br/>
         <p>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</p>
+        {% if last_status_array %}
+        <br/>
+        <h4>Estado atual das controladoras</h4>
+            <table class="table">
+                <thead>
+                    <tr class="status_table_header">
+                        <th class="col-2" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Apelido da controladora">Controladora</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Versão atual do firmware">Firmware</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data e hora do último reset">Último reset</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Normal ou em Reset">Status</div></th>
+                        <th class="col" colspan="3"><div data-toggle="tooltip" data-placement="right" title="O: ok, D: detectado, E: erro, U: indefinido">Estado sensores</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de eventos para  sensor PLV ou SOC">Contador<br/>PLV/SOC</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de processos em execução na controladora">Contador<br/>processos</div></th>
+                        <th class="col" colspan="14"><div data-toggle="tooltip" data-placement="right" title="X: em execução, P: parado, E: erro">Bitmap de processos</div></th>
+                    </tr>
+                    <tr class="status_table_header">
+                        <th class="col"><div data-toggle="tooltip" data-placement="right" title="Sensor de chuva no ralo">SCR</div></th>
+                        <th class="col"><div data-toggle="tooltip" data-placement="right" title="Sensor de umidade">SCU</div></th>
+                        <th class="col"><div data-toggle="tooltip" data-placement="right" title="Sensor de temperatura">TMP</div></th>
+                        {% for tooltip in process_bitmap_tooltips %}
+                            <th class="col"><div data-toggle="tooltip" data-placement="right" title="{{tooltip}}">{{ forloop.counter0 }}</div></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for board_status in last_status_array %}
+                    <tr>
+                        <td>{{board_status.board}}</td>
+                        <td>{{board_status.firmware_version}}</td>
+                        <td>{{board_status.last_start}}</td>
+                        <td>{{board_status.info_array.board_state}}</td>
+                        {% for state_array in board_status.info_array.sensors_state_array %}
+                            <td>{{state_array}}</td>
+                        {% endfor %}
+                        <td>{{board_status.info_array.irq_events_count}}</td>
+                        <td>{{board_status.info_array.board_process_count}}</td>
+                        {% for process_state in board_status.info_array.board_process_bitmap %}
+                            {% if process_state.state == "E" %}
+                                <td style="color: red; font-weight: bold;">
+                            {% else %}
+                                <td>
+                            {% endif %}
+                                {{process_state.state}}
+                            </td>
+                        {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <br/>
+        {% endif %}
+        <h4>Lista de status recebido das controladoras</h4>
         <br/>
         {% if filter %}
             <form id="page_filter" action="" method="get" class="form form-inline">

@@ -6,7 +6,7 @@ from django.http import StreamingHttpResponse
 from django_filters.views import FilterView
 from django_tables2.views import SingleTableMixin
 
-from .models import SensorReadEvent, ControlBoardEvent
+from .models import SensorReadEvent, ControlBoardEvent, ControlBoard, BoardStatusInfo
 from model import data_analyzer as analyzer
 from model.tables import SensorsReadingTable, ControlBoardReadingTable
 from model.filters import SensorReadEventFilter, ControlBoardEventFilter
@@ -26,6 +26,46 @@ class ControlBoardEventsView(SingleTableMixin, FilterView):
     template_name = "model/control_board.html"
     filterset_class = ControlBoardEventFilter
     queryset = ControlBoardEvent.objects.all().order_by('-timestamp')
+    context_object_name = "control_boards"
+
+    def get_context_data(self, **kwargs):
+        context = super(ControlBoardEventsView, self).get_context_data(**kwargs)
+        context['last_status_array'] = ControlBoardEventsView.last_status_array()
+        context['process_bitmap_tooltips'] = ControlBoardEventsView.process_bitmap_tooltips()
+        return context
+
+    @staticmethod
+    def last_status_array():
+        result = []
+        boards = ControlBoard.objects.all()
+        for board in boards:
+            query_status_array = board.controlboardevent_set.filter(
+                status_received__iregex=BoardStatusInfo.BOARD_STATUS_ARRAY_REGEX).order_by(
+                '-timestamp')
+            query_fwv = board.controlboardevent_set.filter(
+                status_received__startswith="FWV").order_by(
+                '-timestamp')
+            query_last_start = board.controlboardevent_set.filter(
+                status_received__startswith="STT").order_by(
+                '-timestamp')
+            board_data = {"board": board.nickname, "info_array": {}, "firmware_version": "", "last_start": ""}
+            if query_status_array:
+                board_data["info_array"] = query_status_array[0].status_translated
+            if query_fwv:
+                board_data["firmware_version"] = query_fwv[0].status_received
+            if query_last_start:
+                board_data["last_start"] = timezone.localtime(query_last_start[0].timestamp).strftime(
+                    '%d/%m/%Y %H:%M')
+            result.append(board_data)
+        return result
+
+    @staticmethod
+    def process_bitmap_tooltips():
+        result = []
+        for name in BoardStatusInfo.ProcessNames:
+            result.append(
+                name[1] + ". Deve estar " + ("executando" if name[2] == BoardStatusInfo.PROCESS_RUNNING else "parado"))
+        return result
 
 
 class Echo:
