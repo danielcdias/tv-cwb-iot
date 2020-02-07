@@ -64,7 +64,8 @@
                     <tr class="status_table_header">
                         <th class="col-2" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Apelido da controladora">Controladora</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Versão atual do firmware">Firmware</div></th>
-                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data e hora do último reset">Último reset</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data/hora último reset">Último reset</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data/hora último pediro de atualização de data e hora (Time Update Request)">Último TUR</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Normal ou em Reset">Status</div></th>
                         <th class="col" colspan="3"><div data-toggle="tooltip" data-placement="right" title="O: ok, D: detectado, E: erro, U: indefinido">Estado sensores</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de eventos para  sensor PLV ou SOC">Contador<br/>PLV/SOC</div></th>
@@ -86,6 +87,7 @@
                         <td>{{board_status.board}}</td>
                         <td>{{board_status.firmware_version}}</td>
                         <td>{{board_status.last_start}}</td>
+                        <td>{{board_status.last_tur}}</td>
                         <td>{{board_status.info_array.board_state}}</td>
                         {% for state_array in board_status.info_array.sensors_state_array %}
                             <td>{{state_array}}</td>

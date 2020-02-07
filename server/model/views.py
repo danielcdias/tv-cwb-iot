@@ -48,13 +48,20 @@ class ControlBoardEventsView(SingleTableMixin, FilterView):
             query_last_start = board.controlboardevent_set.filter(
                 status_received__startswith="STT").order_by(
                 '-timestamp')
-            board_data = {"board": board.nickname, "info_array": {}, "firmware_version": "", "last_start": ""}
+            query_last_tur = board.controlboardevent_set.filter(
+                status_received__startswith="TUR").order_by(
+                '-timestamp')
+            board_data = {"board": board.nickname, "info_array": {}, "firmware_version": "", "last_start": "",
+                          "last_tur": ""}
             if query_status_array:
                 board_data["info_array"] = query_status_array[0].status_translated
             if query_fwv:
-                board_data["firmware_version"] = query_fwv[0].status_received
+                board_data["firmware_version"] = query_fwv[0].status_received[3:]
             if query_last_start:
                 board_data["last_start"] = timezone.localtime(query_last_start[0].timestamp).strftime(
+                    '%d/%m/%Y %H:%M')
+            if query_last_tur:
+                board_data["last_tur"] = timezone.localtime(query_last_tur[0].timestamp).strftime(
                     '%d/%m/%Y %H:%M')
             result.append(board_data)
         return result
