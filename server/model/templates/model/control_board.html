@@ -58,15 +58,17 @@
         <p>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</p>
         {% if last_status_array %}
         <br/>
-        <h4>Estado atual das controladoras</h4>
+        <h4>Saúde das controladoras</h4>
             <table class="table">
                 <thead>
                     <tr class="status_table_header">
                         <th class="col-2" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Apelido da controladora">Controladora</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Versão atual do firmware">Firmware</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data/hora último reset">Último reset</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Status do último reset">Status último reset</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de resets nos últimos 7 dias">Nº resets</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Data/hora último pediro de atualização de data e hora (Time Update Request)">Último TUR</div></th>
-                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Normal ou em Reset">Status</div></th>
+                        <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de TUR nos últimos 7 dias">Nº TUR</div></th>
                         <th class="col" colspan="3"><div data-toggle="tooltip" data-placement="right" title="O: ok, D: detectado, E: erro, U: indefinido">Estado sensores</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de eventos para  sensor PLV ou SOC">Contador<br/>PLV/SOC</div></th>
                         <th class="col" rowspan="2"><div data-toggle="tooltip" data-placement="right" title="Número de processos em execução na controladora">Contador<br/>processos</div></th>
@@ -87,8 +89,10 @@
                         <td>{{board_status.board}}</td>
                         <td>{{board_status.firmware_version}}</td>
                         <td>{{board_status.last_start}}</td>
-                        <td>{{board_status.last_tur}}</td>
                         <td>{{board_status.info_array.board_state}}</td>
+                        <td>{{board_status.resets_count}}</td>
+                        <td>{{board_status.last_tur}}</td>
+                        <td>{{board_status.tur_count}}</td>
                         {% for state_array in board_status.info_array.sensors_state_array %}
                             <td>{{state_array}}</td>
                         {% endfor %}

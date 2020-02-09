@@ -146,10 +146,21 @@ class NotificationUser(models.Model):
 
 
 class BoardStatusInfo:
-    BOARD_STATUS_ARRAY_REGEX = "^[N,R][S][0,1,9]{3}[O,P][0-9]{1,4}[P][0-9]{1,2}[A][0-9]{1,5}$"
+    BOARD_STATUS_ARRAY_REGEX = "^[C,D,I,K,N,P,S,T,U,X][S][0,1,9]{3}[O,P][0-9]{1,4}[P][0-9]{1,2}[A][0-9]{1,5}$"
 
     PROCESS_RUNNING = 1
     PROCESS_STOPPED = 0
+
+    RESET_BY_COMMAND = "C"
+    RESET_BY_DISCONNECTION = "D"
+    RESET_BY_KEEP_ALIVE = "K"
+    RESET_BY_CANT_CONNECT = "X"
+    RESET_BY_TIMEOUT_REGISTER = "T"
+    RESET_BY_TIMEOUT_TIMESTAMP = "S"
+    RESET_BY_UNABLE_CONNECT = "U"
+    RESET_BY_INACTIVITY = "I"
+    RESET_BY_PROCESS_STOPPED = "P"
+    NORMAL_BOARD_STATUS = "N"
 
     MQTTSN_PROCESS = 0
     PUBLISH_PROCESS = 1
@@ -212,11 +223,27 @@ class BoardStatusInfo:
 
     @property
     def board_state(self):
-        result = "Undefined"
-        if self._board_state == "N":
+        result = "Indefinido"
+        if self._board_state == BoardStatusInfo.NORMAL_BOARD_STATUS:
             result = "Normal"
-        elif self._board_state == "R":
-            result = "Reset"
+        elif self._board_state == BoardStatusInfo.RESET_BY_COMMAND:
+            result = "Reset por comando"
+        elif self._board_state == BoardStatusInfo.RESET_BY_DISCONNECTION:
+            result = "Reset por desconexão"
+        elif self._board_state == BoardStatusInfo.RESET_BY_KEEP_ALIVE:
+            result = "Reset por timeout keep alive"
+        elif self._board_state == BoardStatusInfo.RESET_BY_CANT_CONNECT:
+            result = "Reset por falha na conexão"
+        elif self._board_state == BoardStatusInfo.RESET_BY_TIMEOUT_REGISTER:
+            result = "Reset por timeout no registro"
+        elif self._board_state == BoardStatusInfo.RESET_BY_TIMEOUT_TIMESTAMP:
+            result = "Reset por timeout timestamp"
+        elif self._board_state == BoardStatusInfo.RESET_BY_UNABLE_CONNECT:
+            result = "Reset impossível conectar"
+        elif self._board_state == BoardStatusInfo.RESET_BY_INACTIVITY:
+            result = "Reset por inatividade"
+        elif self._board_state == BoardStatusInfo.RESET_BY_PROCESS_STOPPED:
+            result = "Reset por parada de proceso"
         return result
 
     @property

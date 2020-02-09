@@ -1,5 +1,7 @@
 import csv
 
+from datetime import datetime, timedelta
+
 from django.utils import timezone
 from django.http import StreamingHttpResponse
 
@@ -51,8 +53,14 @@ class ControlBoardEventsView(SingleTableMixin, FilterView):
             query_last_tur = board.controlboardevent_set.filter(
                 status_received__startswith="TUR").order_by(
                 '-timestamp')
+            count_reset_l7d = board.controlboardevent_set.filter(
+                timestamp__gte=(datetime.now() - timedelta(days=7))).filter(status_received="STT").order_by(
+                '-timestamp')
+            count_tur_l7d = board.controlboardevent_set.filter(
+                timestamp__gte=(datetime.now() - timedelta(days=7))).filter(status_received="TUR").order_by(
+                '-timestamp')
             board_data = {"board": board.nickname, "info_array": {}, "firmware_version": "", "last_start": "",
-                          "last_tur": ""}
+                          "last_tur": "", "resets_count": 0, "tur_count": 0}
             if query_status_array:
                 board_data["info_array"] = query_status_array[0].status_translated
             if query_fwv:
@@ -63,6 +71,11 @@ class ControlBoardEventsView(SingleTableMixin, FilterView):
             if query_last_tur:
                 board_data["last_tur"] = timezone.localtime(query_last_tur[0].timestamp).strftime(
                     '%d/%m/%Y %H:%M')
+            if count_reset_l7d:
+                board_data["resets_count"] = len(count_reset_l7d)
+            if count_tur_l7d:
+                board_data["tur_count"] = len(count_tur_l7d)
+
             result.append(board_data)
         return result
 
