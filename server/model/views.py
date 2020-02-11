@@ -1,6 +1,6 @@
 import csv
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from django.utils import timezone
 from django.http import StreamingHttpResponse
@@ -54,10 +54,10 @@ class ControlBoardEventsView(SingleTableMixin, FilterView):
                 status_received__startswith="TUR").order_by(
                 '-timestamp')
             count_reset_l7d = board.controlboardevent_set.filter(
-                timestamp__gte=(datetime.now() - timedelta(days=7))).filter(status_received="STT").order_by(
+                timestamp__gte=(timezone.now() - timedelta(days=7))).filter(status_received="STT").order_by(
                 '-timestamp')
             count_tur_l7d = board.controlboardevent_set.filter(
-                timestamp__gte=(datetime.now() - timedelta(days=7))).filter(status_received="TUR").order_by(
+                timestamp__gte=(timezone.now() - timedelta(days=7))).filter(status_received="TUR").order_by(
                 '-timestamp')
             board_data = {"board": board.nickname, "info_array": {}, "firmware_version": "", "last_start": "",
                           "last_tur": "", "resets_count": 0, "tur_count": 0}
