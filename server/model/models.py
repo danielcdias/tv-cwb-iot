@@ -46,6 +46,7 @@ class ControlBoard(models.Model):
                                    validators=[check_mac_address])
     prototype_side = models.IntegerField(verbose_name='Lado do modelo', choices=PrototypeSide)
     board_model = models.ForeignKey(BoardModel, on_delete=models.CASCADE, verbose_name="Modelo")
+    prototype_area = models.FloatField(verbose_name="Área do modelo", default=0.0)
 
     objects = models.Manager()
 
@@ -115,6 +116,7 @@ class Sensor(models.Model):
     sensor_role = models.IntegerField(verbose_name='Função', choices=SensorRole)
     sensor_reading_conversion = models.FloatField(verbose_name="Conversão", default=0.0)
     control_board = models.ForeignKey(ControlBoard, on_delete=models.CASCADE, verbose_name="Placa Controladora")
+    active = models.BooleanField(default=True, verbose_name="Ativo")
 
     objects = models.Manager()
 

@@ -19,7 +19,7 @@ class IndexView(SingleTableMixin, FilterView):
     table_class = SensorsReadingTable
     template_name = "model/index.html"
     filterset_class = SensorReadEventFilter
-    queryset = SensorReadEvent.objects.all().order_by('-timestamp')
+    queryset = SensorReadEvent.objects.all().filter(sensor__active=True).order_by('-timestamp')
 
 
 class ControlBoardEventsView(SingleTableMixin, FilterView):
@@ -99,12 +99,14 @@ class Echo:
 
 
 def get_sensors_read_event_in_csv(request):
-    sensors_read_events = SensorReadEvent.objects.all().order_by('timestamp')
-    rows = [['Placa Controladora', 'ID do Sensor', 'Timestamp', 'Timestamp', 'Valor Lido']]
+    sensors_read_events = SensorReadEvent.objects.all().filter(sensor__active=True).order_by('timestamp')
+    rows = [['Modelo', 'ID do Sensor', 'Timestamp', 'Valor Lido']]
     for sensor_read in sensors_read_events:
         dt = timezone.localtime(sensor_read.timestamp).strftime('%d/%m/%Y %H:%M:%S')
+        value_read = str(sensor_read.value_read).replace('.', ',') if request.GET.get('sep') == 'sc' else str(
+            sensor_read.value_read)
         rows.append(
-            [sensor_read.sensor.control_board.nickname, sensor_read.sensor.sensor_id, dt, sensor_read.value_read])
+            [sensor_read.sensor.control_board.prototype_side_description, sensor_read.sensor.sensor_id, dt, value_read])
 
     return __generate_csv('senso_read_events.csv', rows, request)
 
@@ -115,7 +117,7 @@ def get_peak_delay_in_csv(request):
     results = analyzer.get_peak_delay(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
     rows = [['Modelo', 'Data/Hora Detecçao Superfície', 'Data/Hora Detecção Ralo', 'Diferença']]
     for result in results:
-        rows.append([result['prototype_side'], result['surface_rain_timestamp'], result['drain_rain_timestamp'],
+        rows.append([result['prototype_side'], result['start'], result['end'],
                      result['diff']])
 
     return __generate_csv('atraso_de_pico.csv', rows, request)
@@ -125,10 +127,16 @@ def get_pluviometer_reading_in_csv(request):
     start_date_filter = request.GET.get('start') if request.GET.get('start') else None
     end_date_filter = request.GET.get('end') if request.GET.get('end') else None
     results = analyzer.get_pluviometer_reading(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
-    rows = [['Sensor', 'Data/Hora', 'Medição']]
+    rows = [['Sensor', 'Data', 'Precipitação em litros']]
+    if results:
+        keys = list(results[0].keys())
+        for i in range(3, len(keys)):
+            rows[0].append(keys[i])
     for result in results:
-        rows.append([result['sensor_id'], result['timestamp'], result['pluviometer_count']])
-
+        entry = [result['sensor_id'], result['date'], result['pluviometer_sum']]
+        for i in range(3, len(result)):
+            entry.append(result[rows[0][i]])
+        rows.append(entry)
     return __generate_csv('pluviometro.csv', rows, request)
 
 
