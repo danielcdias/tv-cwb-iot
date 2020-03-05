@@ -11,10 +11,8 @@ from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from config.expiring_token import ExpiringTokenAuthentication
 from model.api.serializers import BoardVendorSerializer, BoardModelSerializer, ControlBoardSerializer, \
-    SensorTypeSerializer, SensorSerializer, SensorReadEventSerializer, NotificationUserSerializer, \
-    ControlBoardEventSerializer
-from model.models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, SensorReadEvent, NotificationUser, \
-    ControlBoardEvent
+    SensorTypeSerializer, SensorSerializer, SensorReadEventSerializer, ControlBoardEventSerializer
+from model.models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, SensorReadEvent, ControlBoardEvent
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.response import Response
 from rest_framework import status
@@ -79,14 +77,6 @@ class SensorReadEventViewSet(ReadOnlyModelViewSet):
     filter_backends = (SearchFilter,)
     search_fields = ('sensor__sensor_id', 'timestamp')
     permission_classes = (IsAuthenticatedOrReadOnly,)
-    authentication_classes = (ExpiringTokenAuthentication,)
-
-
-class NotificationUserViewSet(ReadOnlyModelViewSet):
-    queryset = NotificationUser.objects.all()
-    serializer_class = NotificationUserSerializer
-    filter_backends = (SearchFilter,)
-    permission_classes = (IsAuthenticated,)
     authentication_classes = (ExpiringTokenAuthentication,)
 
 

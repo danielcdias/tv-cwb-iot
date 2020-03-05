@@ -5,8 +5,7 @@ from rest_framework import routers
 
 from config.expiring_token import obtain_expiring_auth_token
 from model.api.viewsets import BoardVendorViewSet, BoardModelViewSet, ControlBoardViewSet, SensorTypeViewSet, \
-    SensorViewSet, SensorReadEventViewSet, NotificationUserViewSet, \
-    ControlBoardEventViewSet, message_receiver
+    SensorViewSet, SensorReadEventViewSet, ControlBoardEventViewSet, message_receiver
 
 router = routers.DefaultRouter()
 router.register(r'boardvendors', BoardVendorViewSet, basename="BoardVendor")
@@ -16,7 +15,6 @@ router.register(r'controlboardevents', ControlBoardEventViewSet, basename="Contr
 router.register(r'sensortypes', SensorTypeViewSet, basename="SensorType")
 router.register(r'sensors', SensorViewSet, basename="Sensor")
 router.register(r'sensorreadevents', SensorReadEventViewSet, basename="SensorReadEvent")
-router.register(r'notificationusers', NotificationUserViewSet, basename="NotificationUser")
 
 urlpatterns = [
     path('', include('model.urls')),

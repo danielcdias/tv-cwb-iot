@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, NotificationUser
+from .models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, SensorCalibrationInterval
 
 
 class BoardVendorAdmin(admin.ModelAdmin):
@@ -33,10 +33,10 @@ class SensorAdmin(admin.ModelAdmin):
     ordering = ('sensor_id',)
 
 
-class NotificationUserAdmin(admin.ModelAdmin):
-    model = NotificationUser
+class SensorCalibrationIntervalAdmin(admin.ModelAdmin):
+    model = SensorCalibrationInterval
     extra = 0
-    ordering = ('user__username',)
+    ordering = ('sensor', 'water_percentage',)
 
 
 admin.site.register(BoardVendor, BoardVendorAdmin)
@@ -44,4 +44,4 @@ admin.site.register(BoardModel, BoardModelAdmin)
 admin.site.register(ControlBoard, ControlBoardAdmin)
 admin.site.register(SensorType, SensorTypeAdmin)
 admin.site.register(Sensor, SensorAdmin)
-admin.site.register(NotificationUser, NotificationUserAdmin)
+admin.site.register(SensorCalibrationInterval, SensorCalibrationIntervalAdmin)

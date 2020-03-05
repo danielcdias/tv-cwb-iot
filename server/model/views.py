@@ -108,7 +108,7 @@ def get_sensors_read_event_in_csv(request):
         rows.append(
             [sensor_read.sensor.control_board.prototype_side_description, sensor_read.sensor.sensor_id, dt, value_read])
 
-    return __generate_csv('senso_read_events.csv', rows, request)
+    return _generate_csv('senso_read_events.csv', rows, request)
 
 
 def get_peak_delay_in_csv(request):
@@ -120,13 +120,13 @@ def get_peak_delay_in_csv(request):
         rows.append([result['prototype_side'], result['start'], result['end'],
                      result['diff']])
 
-    return __generate_csv('atraso_de_pico.csv', rows, request)
+    return _generate_csv('atraso_de_pico.csv', rows, request)
 
 
-def get_pluviometer_reading_in_csv(request):
+def get_pluviometer_rain_events_in_csv(request):
     start_date_filter = request.GET.get('start') if request.GET.get('start') else None
     end_date_filter = request.GET.get('end') if request.GET.get('end') else None
-    results = analyzer.get_pluviometer_reading(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
+    results = analyzer.get_pluviometer_rain_events(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
     rows = [['Sensor', 'Data', 'Precipitação em litros']]
     if results:
         keys = list(results[0].keys())
@@ -137,10 +137,32 @@ def get_pluviometer_reading_in_csv(request):
         for i in range(3, len(result)):
             entry.append(result[rows[0][i]])
         rows.append(entry)
-    return __generate_csv('pluviometro.csv', rows, request)
+    return _generate_csv('pluviometro.csv', rows, request)
 
 
-def __generate_csv(csv_filname: str, rows, request):
+def get_absorption_readings_in_csv(request):
+    start_date_filter = request.GET.get('start') if request.GET.get('start') else None
+    end_date_filter = request.GET.get('end') if request.GET.get('end') else None
+    results = analyzer.get_absorption_readings(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
+    rows = [['Modelo', 'Data/Hora', 'Água absorvida (litros)']]
+    for result in results:
+        entry = [result['prototype_side'], result['timestamp'], result['water_absorbed']]
+        rows.append(entry)
+    return _generate_csv('absorção-água.csv', rows, request)
+
+
+def get_temperature_readings_in_csv(request):
+    start_date_filter = request.GET.get('start') if request.GET.get('start') else None
+    end_date_filter = request.GET.get('end') if request.GET.get('end') else None
+    results = analyzer.get_temperature_readings(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
+    rows = [['Modelo', 'Data', 'Hora', 'Temperatura (°C)']]
+    for result in results:
+        entry = [result['prototype_side'], result['date'], result['hour'], result['temperature']]
+        rows.append(entry)
+    return _generate_csv('temperatura.csv', rows, request)
+
+
+def _generate_csv(csv_filname: str, rows, request):
     sep = ';' if request.GET.get('sep') == 'sc' else ','
     pseudo_buffer = Echo()
     writer = csv.writer(pseudo_buffer, delimiter=sep, quotechar='"', quoting=csv.QUOTE_ALL)

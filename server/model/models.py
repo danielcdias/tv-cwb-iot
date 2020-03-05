@@ -46,7 +46,8 @@ class ControlBoard(models.Model):
                                    validators=[check_mac_address])
     prototype_side = models.IntegerField(verbose_name='Lado do modelo', choices=PrototypeSide)
     board_model = models.ForeignKey(BoardModel, on_delete=models.CASCADE, verbose_name="Modelo")
-    prototype_area = models.FloatField(verbose_name="Área do modelo", default=0.0)
+    prototype_area = models.DecimalField(verbose_name="Área do modelo", default=0.0, max_digits=5, decimal_places=2)
+    prototype_weight = models.DecimalField(verbose_name="Peso do modelo", default=0.0, max_digits=5, decimal_places=2)
 
     objects = models.Manager()
 
@@ -102,12 +103,14 @@ class Sensor(models.Model):
     ROLE_RAIN_DETECTION_DRAIN = 1
     ROLE_RAIN_ABSORPTION = 2
     ROLE_RAIN_AMOUNT = 3
+    ROLE_TEMPERATURE = 4
 
     SensorRole = (
         (ROLE_RAIN_DETECTION_SURFACE, "Detecção de chuva na superfície"),
         (ROLE_RAIN_DETECTION_DRAIN, "Detecção de chuva no ralo"),
         (ROLE_RAIN_ABSORPTION, "Absorção de chuva"),
         (ROLE_RAIN_AMOUNT, "Quantidade de chuva"),
+        (ROLE_TEMPERATURE, "Temperatura do modelo"),
     )
 
     sensor_id = models.CharField(max_length=10, verbose_name="ID")
@@ -128,6 +131,19 @@ class Sensor(models.Model):
         return "{} - {} - {}".format(self.control_board.nickname, self.sensor_id, self.sensor_role_description)
 
 
+class SensorCalibrationInterval(models.Model):
+    water_percentage = models.DecimalField(verbose_name="Percentual de água", null=False, max_digits=5,
+                                           decimal_places=2)
+    interval_floor_value = models.IntegerField(verbose_name="Valor piso do intervalo", null=False)
+    sensor = models.ForeignKey(Sensor, limit_choices_to={'sensor_role': Sensor.ROLE_RAIN_ABSORPTION},
+                               on_delete=models.CASCADE, verbose_name="Sensor")
+
+    def __str__(self):
+        return "{} - {} - {} - {}".format(self.sensor.control_board.nickname, self.sensor.sensor_id,
+                                          self.water_percentage,
+                                          self.interval_floor_value)
+
+
 class SensorReadEvent(models.Model):
     timestamp = models.DateTimeField(verbose_name="Data/Hora")
     value_read = models.FloatField(verbose_name="Valor lido")
@@ -138,13 +154,6 @@ class SensorReadEvent(models.Model):
     def __str__(self):
         return "Sensor {} read - timestamp: {}, value read: {}".format(self.sensor.sensor_id, self.timestamp,
                                                                        self.value_read)
-
-
-class NotificationUser(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    notify_errors = models.BooleanField(default=False, verbose_name="Send errors notifications")
-
-    objects = models.Manager()
 
 
 class BoardStatusInfo:
@@ -188,7 +197,8 @@ class BoardStatusInfo:
         (GREEN_LED_PROCESS, "Processo de controle LED verde", PROCESS_RUNNING),
         (RED_LED_PROCESS, "Processo de controle LED vermelho", PROCESS_RUNNING),
         (REQUEST_TIMESTAMP_UPDATE_PROCESS, "Processo para requisição de atualização de data/hora", PROCESS_RUNNING),
-        (INTERRUPTION_SENSOR_RESET_INTERVAL_PROCESS, "Processo de zeramentos dos sensores por interrupção", PROCESS_RUNNING),
+        (INTERRUPTION_SENSOR_RESET_INTERVAL_PROCESS, "Processo de zeramentos dos sensores por interrupção",
+         PROCESS_RUNNING),
         (RAIN_SENSOR_DRAIN_PROCESS, "Processo de leitura do sensor de ralo", PROCESS_RUNNING),
         (MOISTURE_SENSOR_PROCESS, "Processo de leitura do sensor de umidade", PROCESS_RUNNING),
         (INTERRUPTION_SENSOR_PROCESS, "Processo de leitura do sensor por interrupção", PROCESS_RUNNING),
@@ -253,7 +263,7 @@ class BoardStatusInfo:
         result = ["U", "U", "U"]
         for i in range(2, 5):
             result[i - 2] = "O" if self._sensors_array[i - 2] == 0 else "D" if self._sensors_array[
-                                                                                     i - 2] == 1 else "E"
+                                                                                   i - 2] == 1 else "E"
         return result
 
     @property

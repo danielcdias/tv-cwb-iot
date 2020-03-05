@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework.serializers import ModelSerializer, CharField
 
-from model.models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, SensorReadEvent, NotificationUser, \
+from model.models import BoardVendor, BoardModel, ControlBoard, SensorType, Sensor, SensorReadEvent, \
     ControlBoardEvent
 
 
@@ -65,11 +65,3 @@ class UserSerializer(ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email',)
-
-
-class NotificationUserSerializer(ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = NotificationUser
-        fields = ('id', 'notify_errors', 'user',)

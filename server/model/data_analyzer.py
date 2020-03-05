@@ -1,11 +1,9 @@
 import logging
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from django.utils import timezone
-from django.conf import settings
-from django.db.models import Q, Sum, Value as V
-from django.db.models.functions import TruncDay, Coalesce
+from django.db.models import Q
 
 from model.models import SensorReadEvent, ControlBoard, Sensor
 from copy import deepcopy
@@ -13,18 +11,12 @@ from copy import deepcopy
 DAYS_FOR_NEXT_PEAK_DELAY = 3
 RAIN_QUANTITY_SENSOR_RESET_INTERVAL_IN_MINUTES = 15
 
-def get_diff_datetime(start_timestamp, end_timestamp):
-    dt_start = timezone.localtime(start_timestamp)
-    dt_end = timezone.localtime(end_timestamp)
-    diff = dt_end - dt_start
-    hours = ("0" + str((diff.days * 24) + ((diff.seconds // 60) // 60)))[-2:]
-    minutes = ("0" + str((diff.seconds // 60) % 60))[-2:]
-    seconds = ("0" + str(diff.seconds % 60))[-2:]
-    result = hours + ":" + minutes + ":" + seconds
-    return result
+calibration_tables = []
+
+logger = logging.getLogger("tvcwb")
 
 
-def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None):
+def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None) -> list:
     result = []
     query_res = SensorReadEvent.objects.all().filter(sensor__active=True).order_by('timestamp')
     if start_date_filter:
@@ -81,7 +73,7 @@ def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None):
                                     'start': timezone.localtime(current_peak).strftime('%d/%m/%Y %H:%M:%S'),
                                     'end': timezone.localtime(query_rdd_board_event[0].timestamp).strftime(
                                         '%d/%m/%Y %H:%M:%S'),
-                                    'diff': get_diff_datetime(current_peak, query_rdd_board_event[0].timestamp)}
+                                    'diff': _get_diff_datetime(current_peak, query_rdd_board_event[0].timestamp)}
                 result.append(deepcopy(peak_delay_event))
     if result:
         result.sort(key=lambda item: (datetime.strptime(item.get("start"), '%d/%m/%Y %H:%M:%S'),
@@ -89,7 +81,7 @@ def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None):
     return result
 
 
-def get_pluviometer_reading(start_date_filter: str = None, end_date_filter: str = None):
+def get_pluviometer_rain_events(start_date_filter: str = None, end_date_filter: str = None) -> list:
     query_res = SensorReadEvent.objects.all().filter(
         Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_AMOUNT)).order_by('timestamp', 'value_read')
     if start_date_filter:
@@ -122,7 +114,7 @@ def get_pluviometer_reading(start_date_filter: str = None, end_date_filter: str 
             entry = {"sensor_id": query_res[i].sensor.sensor_id, "timestamp": timestamp,
                      "pluviometer_count": value_converted}
             for area in prototype_areas:
-                entry[area['prototype_side']] = area['prototype_area'] * value_converted
+                entry[area['prototype_side']] = float(area['prototype_area']) * value_converted
             rain_events.append(entry)
 
     sum_plv = 0
@@ -137,15 +129,127 @@ def get_pluviometer_reading(start_date_filter: str = None, end_date_filter: str 
         if save_event:
             date = rain_events[i]['timestamp'][0:10]
             day_event = {"sensor_id": rain_events[i]['sensor_id'], "date": date,
-                         "pluviometer_sum": get_float_as_str_with_comma(sum_plv, 4)}
+                         "pluviometer_sum": _get_float_as_str_with_comma(sum_plv, 4)}
             for area in prototype_areas:
-                day_event[area['prototype_side']] = get_float_as_str_with_comma(
-                    area['prototype_area'] * sum_plv, 4)
+                day_event[area['prototype_side']] = _get_float_as_str_with_comma(
+                    float(area['prototype_area']) * sum_plv, 4)
             result.append(day_event)
             sum_plv = 0
 
     return result
 
 
-def get_float_as_str_with_comma(number: float, decimals: int) -> str:
+def get_absorption_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
+    query_res = SensorReadEvent.objects.all().filter(
+        Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_ABSORPTION) & Q(value_read__gt=0)).order_by(
+        'timestamp', 'value_read')
+    if start_date_filter:
+        init_dt = datetime.strptime(start_date_filter, '%Y-%m-%dT%H-%M-%S')
+        query_res = query_res.filter(timestamp_gte=init_dt)
+    if end_date_filter:
+        end_dt = datetime.strptime(end_date_filter, '%Y-%m-%dT%H-%M-%S')
+        query_res = query_res.filter(timestamp_lte=end_dt)
+    result = []
+    for event in query_res:
+        translated_event = {"prototype_side": event.sensor.control_board.prototype_side_description,
+                            "timestamp": timezone.localtime(event.timestamp).strftime('%d/%m/%Y %H:%M:%S'),
+                            "water_absorbed": _get_float_as_str_with_comma(_get_absorption_translation(event), 2)}
+        result.append(translated_event)
+    return result
+
+
+def get_temperature_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
+    query_res = SensorReadEvent.objects.all().filter(
+        Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_TEMPERATURE)).order_by('timestamp')
+    if start_date_filter:
+        init_dt = datetime.strptime(start_date_filter, '%Y-%m-%dT%H-%M-%S')
+        query_res = query_res.filter(timestamp_gte=init_dt)
+    if end_date_filter:
+        end_dt = datetime.strptime(end_date_filter, '%Y-%m-%dT%H-%M-%S')
+        query_res = query_res.filter(timestamp_lte=end_dt)
+    result = []
+    if query_res:
+        boards = ControlBoard.objects.all()
+        for board in boards:
+            query_board = query_res.filter(sensor__control_board_id=board.id)
+            same_hour_events = []
+            for i in range(0, len(query_board)):
+                current_event = query_board[i]
+                current_date = timezone.localtime(current_event.timestamp).strftime('%d/%m/%Y')
+                current_hour = timezone.localtime(current_event.timestamp).strftime('%H')
+                same_hour_events.append(current_event)
+                save_event = False
+                if (i + 1) < len(query_board):
+                    next_event = query_board[i + 1]
+                    next_date = timezone.localtime(next_event.timestamp).strftime('%d/%m/%Y')
+                    next_hour = timezone.localtime(next_event.timestamp).strftime('%H')
+                    if (current_date != next_date) or (current_hour != next_hour):
+                        save_event = True
+                else:
+                    save_event = True
+                if save_event:
+                    result.append(_get_avg_temperature(same_hour_events, current_date, current_hour))
+                    same_hour_events = []
+
+    result.sort(key=lambda x: (x['date'][6:10], x['date'][3:5], x['date'][0:2], x['hour']))
+    return result
+
+
+def _get_avg_temperature(events: list, date_str: str, hour_str: str) -> dict:
+    sum_evt = 0
+    prototype_side = events[0].sensor.control_board.prototype_side_description
+    for e in events:
+        sum_evt += e.value_read
+    avg_value = sum_evt / len(events)
+    tmp_event = {"prototype_side": prototype_side,
+                 "date": date_str,
+                 "hour": hour_str,
+                 "temperature": _get_float_as_str_with_comma(avg_value, 2)}
+    return tmp_event
+
+
+def _get_diff_datetime(start_timestamp, end_timestamp) -> str:
+    dt_start = timezone.localtime(start_timestamp)
+    dt_end = timezone.localtime(end_timestamp)
+    diff = dt_end - dt_start
+    hours = ("0" + str((diff.days * 24) + ((diff.seconds // 60) // 60)))[-2:]
+    minutes = ("0" + str((diff.seconds // 60) % 60))[-2:]
+    seconds = ("0" + str(diff.seconds % 60))[-2:]
+    result = hours + ":" + minutes + ":" + seconds
+    return result
+
+
+def _init_calibration_tables():
+    global calibration_tables
+    absorption_sensors = Sensor.objects.filter(sensor_role=Sensor.ROLE_RAIN_ABSORPTION)
+    for sensor in absorption_sensors:
+        calibration_table = {'nickname': sensor.control_board.nickname, 'sensor_id': sensor.sensor_id,
+                             'calibration_table':
+                                 sensor.sensorcalibrationinterval_set.all().order_by('-interval_floor_value')}
+        calibration_tables.append(calibration_table)
+
+
+def _get_absorption_translation(sensor_reading: SensorReadEvent) -> float:
+    result = 0.0
+    if sensor_reading.sensor.sensor_role == Sensor.ROLE_RAIN_ABSORPTION:
+        if not calibration_tables:
+            _init_calibration_tables()
+        calibration_table = []
+        for c in calibration_tables:
+            if c['nickname'] == sensor_reading.sensor.control_board.nickname and \
+                    c['sensor_id'] == sensor_reading.sensor.sensor_id:
+                calibration_table = c['calibration_table']
+                break
+        percentage_selected = 0.0
+        for interval in calibration_table:
+            if sensor_reading.value_read > interval.interval_floor_value:
+                break
+            percentage_selected = interval.water_percentage
+        result = sensor_reading.sensor.control_board.prototype_weight * (percentage_selected / 100)
+    else:
+        raise TypeError("The informed sensor reading event is not from a rain absorption role sensor.")
+    return result
+
+
+def _get_float_as_str_with_comma(number: float, decimals: int) -> str:
     return ("{:.{dec}f}".format(number, dec=decimals)).replace(".", ",")
