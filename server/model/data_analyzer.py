@@ -64,9 +64,9 @@ def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None) -
             current_peak = peak_delays_found[i]['started']
             next_peak = peak_delays_found[i + 1]['started'] if (i + 1) < len(peak_delays_found) else None
             query_rdd_board_event = query_rdd.filter(sensor__control_board_id=board.id).filter(
-                timestamp__gt=current_peak)
+                timestamp__gte=current_peak)
             if next_peak:
-                query_rdd_board_event = query_rdd.filter(sensor__control_board_id=board.id).filter(
+                query_rdd_board_event = query_rdd_board_event.filter(sensor__control_board_id=board.id).filter(
                     timestamp__lt=next_peak)
             if query_rdd_board_event:
                 peak_delay_event = {'prototype_side': board.prototype_side_description,
