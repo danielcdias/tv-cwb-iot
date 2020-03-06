@@ -1,10 +1,20 @@
 import django_filters
 
-from .models import SensorReadEvent, ControlBoard
+from .models import SensorReadEvent, ControlBoard, ControlBoardEvent, Sensor
+
+
+def get_sensor_ids():
+    sensors = Sensor.objects.all().filter(active=True).order_by('sensor_id')
+    aux = []
+    for s in sensors:
+        if s.sensor_id not in aux:
+            aux.append(s.sensor_id)
+    return [(t, t) for t in aux]
 
 
 class SensorReadEventFilter(django_filters.FilterSet):
-    sensor__sensor_id = django_filters.CharFilter(label="ID do sensor", lookup_expr='contains')
+    sensor__sensor_id = django_filters.MultipleChoiceFilter(choices=get_sensor_ids())
+    # sensor__sensor_id = django_filters.CharFilter(label="ID do sensor", lookup_expr='contains')
     timestamp = django_filters.DateTimeFromToRangeFilter(label="Data/hora")
     value_read = django_filters.NumberFilter(label="Valor lido", lookup_expr='contains')
     sensor__control_board__prototype_side = django_filters.ChoiceFilter(choices=ControlBoard.PrototypeSide)
@@ -21,5 +31,5 @@ class ControlBoardEventFilter(django_filters.FilterSet):
     status_received = django_filters.CharFilter(label="Valor lido")
 
     class Meta:
-        model = SensorReadEvent
+        model = ControlBoardEvent
         fields = ('control_board__nickname', 'control_board__prototype_side', 'timestamp', 'status_received')
