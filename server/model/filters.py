@@ -14,7 +14,6 @@ def get_sensor_ids():
 
 class SensorReadEventFilter(django_filters.FilterSet):
     sensor__sensor_id = django_filters.MultipleChoiceFilter(choices=get_sensor_ids())
-    # sensor__sensor_id = django_filters.CharFilter(label="ID do sensor", lookup_expr='contains')
     timestamp = django_filters.DateTimeFromToRangeFilter(label="Data/hora")
     value_read = django_filters.NumberFilter(label="Valor lido", lookup_expr='contains')
     sensor__control_board__prototype_side = django_filters.ChoiceFilter(choices=ControlBoard.PrototypeSide)
@@ -28,7 +27,7 @@ class ControlBoardEventFilter(django_filters.FilterSet):
     control_board__nickname = django_filters.CharFilter(label="Apelido", lookup_expr='contains')
     control_board__prototype_side = django_filters.ChoiceFilter(choices=ControlBoard.PrototypeSide)
     timestamp = django_filters.DateTimeFromToRangeFilter(label="Data/hora")
-    status_received = django_filters.CharFilter(label="Valor lido")
+    status_received = django_filters.CharFilter(label="Valor lido", lookup_expr='contains')
 
     class Meta:
         model = ControlBoardEvent

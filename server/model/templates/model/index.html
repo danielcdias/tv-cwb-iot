@@ -11,6 +11,8 @@
         <link rel="icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
         <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css" integrity="sha256-DOS9W6NR+NFe1fUhEE0PGKY/fubbUCnOfTje2JMDw3Y=" crossorigin="anonymous" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js" integrity="sha256-FEqEelWI3WouFOo2VWP/uJfs1y8KJ++FLh2Lbqc8SJk=" crossorigin="anonymous"></script>
         <title>Terraço Verde CWB - Comparação modelos intensivo Vs extensivo</title>
         <style>
             h3 {
@@ -59,5 +61,17 @@
             </form><br/>
         {% endif %}
         {% render_table table %}
+        <script>
+          $(function () {
+            $("#id_timestamp_0").datetimepicker({
+              format: 'd/m/Y H:i',
+            });
+            $("#id_timestamp_1").datetimepicker({
+              format: 'd/m/Y H:i',
+            });
+            $("#id_timestamp_0").attr('autocomplete', 'off');
+            $("#id_timestamp_1").attr('autocomplete', 'off');
+          });
+        </script>
     </body>
 </html>
