@@ -1,23 +1,28 @@
 <!DOCTYPE html>
 {% load bootstrap4 %}
 {# model/templates/model/index.html #}
-{% load render_table from django_tables2 %}
 <html>
     <head>
         {% load static %}
         <meta charset="UTF-8">
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css" integrity="sha384-HSMxcRTRxnN+Bdg0JdbxYKrThecOKuH5zCYotlSAcp1+c8xmyTe9GYg1l9a69psu" crossorigin="anonymous">
+
         <link rel="shortcut icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
-        <link rel="icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
-        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-        <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js" integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd" crossorigin="anonymous"></script>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.min.css" integrity="sha256-DOS9W6NR+NFe1fUhEE0PGKY/fubbUCnOfTje2JMDw3Y=" crossorigin="anonymous" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-datetimepicker/2.5.20/jquery.datetimepicker.full.min.js" integrity="sha256-FEqEelWI3WouFOo2VWP/uJfs1y8KJ++FLh2Lbqc8SJk=" crossorigin="anonymous"></script>
+        <link rel="icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}" />
+
+        <script src="{% static 'model/js/jquery-3.4.1.min.js' %}"></script>
+        <script src="{% static 'model/js/bootstrap.min.js' %}"></script>
+        <link rel="stylesheet" href="{% static 'model/css/bootstrap.min.css' %}" />
+
+        <script src="{% static 'model/js/jquery.datetimepicker.full.min.js' %}"></script>
+        <link rel="stylesheet" href="{% static 'model/css/jquery.datetimepicker.min.css' %}" />
+
         <title>Terraço Verde CWB - Comparação modelos intensivo Vs extensivo</title>
         <style>
+            h2 {
+               color: #337AB7;
+            }
             h3 {
                color: #337AB7;
-               font-weight: bold;
             }
             h4 {
                color: #337AB7;
@@ -25,53 +30,76 @@
             body {
                 padding: 10px;
             }
-            input {
-                margin:0 0.25em;
+            .input-group-prepend {
+                width : 15%;
             }
-            tr:hover td {
-               background-color: #337AB7;
-               color: #ffffff
+            .input-group-text {
+                width : 100%;
             }
-            tr:nth-child(even) {
-               background-color: #F0F0F0;
+            .alert {
+                margin-bottom: 1px;
+                height: 30px;
+                line-height:30px;
+                padding:0px 15px;
             }
         </style>
         <script>
-            function reset_filter() {
-                document.getElementById('id_sensor__sensor_id').value='';
-                document.getElementById('id_timestamp_0').value='';
-                document.getElementById('id_timestamp_1').value='';
-                document.getElementById('id_value_read').value='';
-                document.getElementById('id_sensor__control_board__prototype_side').selectedIndex = 0;
-                document.getElementById('page_filter').submit();
-            }
+            $(function () {
+                $("#id_start_timestamp").datetimepicker({
+                    format: 'd/m/Y H:i',
+                });
+                $("#id_end_timestamp").datetimepicker({
+                    format: 'd/m/Y H:i',
+                });
+                $("#id_start_timestamp").attr('autocomplete', 'off');
+                $("#id_end_timestamp").attr('autocomplete', 'off');
+                $("#id_start_timestamp").attr('readonly', 'on');
+                $("#id_end_timestamp").attr('readonly', 'on');
+                $("#inputGroupFileAddon04").click(function() {
+                    $(this).prop("disabled", true);
+                    $(this).html(
+                        `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Aguarde...`
+                    );
+                    document.getElementById('info_query_form').submit();
+               });
+            });
         </script>
     </head>
     <body>
         <h3>Terraço Verde - Comparação Modelo Intensivo Vs Extensivo</h3>
-        <h4>Leituras de sensores (<a href="/boards">Ver Placas Controladoras</a>)</h4>
+        <h4>Pesquisa comparativa entre tipos de telhados verdes</h4>
         <br/>
-        <p>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</p>
+        <h5>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</h5>
         <br/>
-        {% if filter %}
-            <form id="page_filter" action="" method="get" class="form form-inline">
-                {% bootstrap_form filter.form layout='inline' %}
-                {% bootstrap_button 'filter' %}
-                <button class="btn btn-secondary" type="reset" onclick="reset_filter()">reset</button>
-            </form><br/>
-        {% endif %}
-        {% render_table table %}
-        <script>
-          $(function () {
-            $("#id_timestamp_0").datetimepicker({
-              format: 'd/m/Y H:i',
-            });
-            $("#id_timestamp_1").datetimepicker({
-              format: 'd/m/Y H:i',
-            });
-            $("#id_timestamp_0").attr('autocomplete', 'off');
-            $("#id_timestamp_1").attr('autocomplete', 'off');
-          });
-        </script>
+        <h6>Escolha a informação que deseja consultar:</h6>
+        <br/>
+        <form action="/" method="post" id="info_query_form">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="inputGroup-sizing-default">{{ field.label }}</span>
+                    </div>
+                    {{ field }}
+                </div>
+            {% endfor %}
+            {% for field in form %}
+                {% for error in field.errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ error }}
+                    </div>
+                    <br/>
+                {% endfor %}
+            {% endfor %}
+            <div class="input-group-append">
+                <button class="btn btn-primary" type="submit" id="inputGroupFileAddon04">Enviar</button>
+            </div>
+        </form>
+        <br/><br/>
+        <p>
+            <a href="{% url 'model:sensors' %}">Leitura de Sensores</a>
+            <br/>
+            <a href="{% url 'model:boards' %}">Status das placas controladoras</a>
+        </p>
     </body>
 </html>

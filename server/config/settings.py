@@ -41,9 +41,10 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework.authtoken',
     'django_filters',
-    'model',
     'django_tables2',
-    'bootstrap4'
+    'bootstrap4',
+    'chartjs',
+    'model',
 ]
 
 MIDDLEWARE = [
@@ -185,3 +186,6 @@ EMAIL_PORT = os.environ.get('IOT_DJANGO_EMAIL_PORT')
 EMAIL_HOST_USER = os.environ.get('IOT_DJANGO_EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('IOT_DJANGO_EMAIL_PASS')
 EMAIL_USE_TLS = os.environ.get('IOT_DJANGO_EMAIL_USE_TLS')
+
+DATETIME_FORMAT = "%d/%m/%Y %H:%M"
+DATE_FORMAT = "%d/%m/%Y"

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+{% load bootstrap4 %}
+{# model/templates/model/index.html #}
+<html>
+    <head>
+        {% load static %}
+        <meta charset="UTF-8">
+
+        <link rel="shortcut icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}"/>
+        <link rel="icon" type="image/x-icon" href="{% static 'model/images/favicon.ico' %}" />
+
+        <script src="{% static 'model/js/jquery-3.4.1.min.js' %}"></script>
+        <script src="{% static 'model/js/bootstrap.min.js' %}"></script>
+        <link rel="stylesheet" href="{% static 'model/css/bootstrap.min.css' %}" />
+
+        <script src="{% static 'model/js/jquery.datetimepicker.full.min.js' %}"></script>
+        <link rel="stylesheet" href="{% static 'model/css/jquery.datetimepicker.min.css' %}" />
+
+        <script type="text/javascript" src="{% static 'js/Chart.min.js' %}"></script>
+        <!--[if lte IE 8]>
+            <script src="{% static 'js/excanvas.js' %}"></script>
+        <![endif]-->
+
+        <title>Terraço Verde CWB - Comparação modelos intensivo Vs extensivo</title>
+        <style>
+            h2 {
+               color: #337AB7;
+            }
+            h3 {
+               color: #337AB7;
+            }
+            h4 {
+               color: #337AB7;
+            }
+            body {
+                padding: 10px;
+            }
+            #data_description {
+                width:70%;
+                text-align: justify;
+                text-justify: inter-word;
+            }
+            #disclaimer {
+                width:70%;
+                font-size: 80%;
+                text-align: justify;
+                text-justify: inter-word;
+            }
+        </style>
+        <script>
+            $(function () {
+                $("#id_date_selected").change(function() {
+                    $("#temperature_info_form").submit();
+                });
+            });
+        </script>
+    </head>
+    <body>
+        <h3>Terraço Verde - Comparação Modelo Intensivo Vs Extensivo</h3>
+        <h4>Pesquisa comparativa entre tipos de telhados verdes</h4>
+        <br/>
+        <h5>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</h5>
+        <br/>
+        <h4>Comparação de Temperatura nos modelos</h4>
+        <br/>
+        <div id="data_description">
+            <p>Compara a temperatura medida por sensores enterrados 7 cm dentro do solo de cada modelo. É importante
+            verificar nos gráficos a diferença de amplitude entre os modelos, que indica uma maior ou menor variação
+            na temperatura de acordo com o modelo adotado. Essa temperatura interfere diretamente no pavimento abaixo
+            do telhado verde.</p>
+        </div>
+        <a href="/">Retornar</a>
+        <br/><br/>
+        <form action="/" method="post" id="temperature_info_form">
+            {% csrf_token %}
+            <input type="hidden" name="data_type" value="0" />
+            <input type="hidden" name="start_timestamp" value="" />
+            <input type="hidden" name="end_timestamp" value="" />
+            <input type="hidden" name="dates_available" value="{{dates_available}}" />
+            {% if dates_available%}
+                <div class="input-group input-group-sm mb-3">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text" id="inputGroup-sizing-default">Datas com dados disponíveis</span>
+                    </div>
+                    <select name="date_selected" id="id_date_selected">
+                        {% for date_available in dates_available %}
+                            {% if date_selected == date_available%}
+                                <option value="{{date_available}}" selected>{{date_available}}</option>
+                            {% else %}
+                                <option value="{{date_available}}">{{date_available}}</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            {% endif %}
+        </form>
+        <div style="width:70%;">
+		    <canvas id="canvas"></canvas>
+	    </div>
+        <script>
+            var ctx = $('#canvas');
+            var myChart = new Chart(ctx, {
+                type: 'line',
+                {% autoescape off %}
+                data: JSON.parse('{{ data }}'),
+                {% endautoescape %}
+                options: {
+                    responsive: true,
+                    legend: {
+                        position: 'bottom'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Variação de temperatura nos modelos em {{date_selected}}',
+                        fontSize: 20
+                    },
+                    scales: {
+                        yAxes: [{
+                            ticks: {
+                                suggestedMin: {{ min_tick }},
+                                suggestedMax: {{ max_tick }},
+                                stepSize: {{ step_size }}
+                            },
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Temperatura (°C)',
+                                fontSize: 14,
+                                fontStyle: 'bold'
+                            }
+                        }],
+                        xAxes: [{
+                            display: true,
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Horas do dia',
+                                fontSize: 14,
+                                fontStyle: 'bold'
+                            }
+                        }],
+                    }
+                }
+            });
+        </script>
+        <br/>
+        <div id="disclaimer">
+            <p>Os valores de temperaturas exibidas nos gráficos são de leituras efetuadas nos sensores de temperatura
+            colocados em cada lado do protótipo. As leituras, que são efetuadas em intervalos de 60 minutos, estão
+            agrupadas por hora dentro da data selecionada. A leitura não ocorre no minuto zero de cada hora, variando
+            de acordo com o último ciclo de início da placa controladora onde o sensor está ligado.</p>
+            <p>Algumas datas não apresentam todas as horas preenchidas devido a um dos seguintes motivos: falha de
+            leitura do sensor, perda de comunicação que gera reinicio da placa controladora, ou ainda queda de
+            energia.</p>
+            <p>As datas com dados disponíveis são filtradas pelas datas inicial e final informadas na página principal.
+            Caso nenhuma data tenha sido informada, todas as datas com dados disponíveis serão apresentadas.</p>
+        </div>
+    </body>
+</html>
