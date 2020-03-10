@@ -3,7 +3,8 @@ from model import views
 
 app_name = 'model'
 urlpatterns = [
-    path('', views.IndexView.as_view(), name='index'),
+    path('', views.form_data_available, name='index'),
+    path('sensors/', views.SensorsView.as_view(), name='sensors'),
     path('boards/', views.ControlBoardEventsView.as_view(), name='boards'),
     path('csv/sensor_read_events/', views.get_sensors_read_event_in_csv, name='csv_sensorreadevents'),
     path('csv/peak_delay/', views.get_peak_delay_in_csv, name='csv_peakdelay'),
