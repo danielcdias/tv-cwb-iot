@@ -17,6 +17,10 @@ calibration_tables = []
 logger = logging.getLogger("tvcwb")
 
 
+def get_float_as_str_with_comma(number: float, decimals: int) -> str:
+    return ("{:.{dec}f}".format(number, dec=decimals)).replace(".", ",")
+
+
 def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None) -> list:
     result = []
     query_res = SensorReadEvent.objects.all().filter(sensor__active=True).order_by('timestamp')
@@ -138,9 +142,9 @@ def get_pluviometer_rain_events(start_date_filter: str = None, end_date_filter: 
         if save_event:
             date = rain_events[i]['timestamp'][0:10]
             day_event = {"sensor_id": rain_events[i]['sensor_id'], "date": date,
-                         "pluviometer_sum": _get_float_as_str_with_comma(sum_plv, 4)}
+                         "pluviometer_sum": get_float_as_str_with_comma(sum_plv, 4)}
             for area in prototype_areas:
-                day_event[area['prototype_side']] = _get_float_as_str_with_comma(
+                day_event[area['prototype_side']] = get_float_as_str_with_comma(
                     float(area['prototype_area']) * sum_plv, 4)
             result.append(day_event)
             sum_plv = 0
@@ -166,7 +170,7 @@ def get_absorption_readings(start_date_filter: str = None, end_date_filter: str 
     for event in query_res:
         translated_event = {"prototype_side": event.sensor.control_board.prototype_side_description,
                             "timestamp": timezone.localtime(event.timestamp).strftime(settings.DATETIME_FORMAT),
-                            "water_absorbed": _get_float_as_str_with_comma(_get_absorption_translation(event), 2)}
+                            "water_absorbed": get_float_as_str_with_comma(_get_absorption_translation(event), 2)}
         result.append(translated_event)
     return result
 
@@ -221,7 +225,7 @@ def _get_avg_temperature(events: list, date_str: str, hour_str: str) -> dict:
     tmp_event = {"prototype_side": prototype_side,
                  "date": date_str,
                  "hour": hour_str,
-                 "temperature": _get_float_as_str_with_comma(avg_value, 2)}
+                 "temperature": get_float_as_str_with_comma(avg_value, 2)}
     return tmp_event
 
 
@@ -264,7 +268,3 @@ def _get_absorption_translation(sensor_reading: SensorReadEvent) -> float:
         percentage_selected = interval.water_percentage
     result = sensor_reading.sensor.control_board.prototype_weight * (percentage_selected / 100)
     return result
-
-
-def _get_float_as_str_with_comma(number: float, decimals: int) -> str:
-    return ("{:.{dec}f}".format(number, dec=decimals)).replace(".", ",")

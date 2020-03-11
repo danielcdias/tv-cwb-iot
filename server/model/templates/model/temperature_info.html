@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 {% load bootstrap4 %}
 {# model/templates/model/index.html #}
+{% load app_filters %}
 <html>
     <head>
         {% load static %}
@@ -61,13 +62,13 @@
         <br/>
         <h5>Pesquisadores responsáveis: Thamille Casagrande e Daniel Dias</h5>
         <br/>
-        <h4>Comparação de Temperatura nos modelos</h4>
+        <h4>Comparação de temperatura nos modelos</h4>
         <br/>
         <div id="data_description">
-            <p>Compara a temperatura medida por sensores enterrados 7 cm dentro do solo de cada modelo. É importante
-            verificar nos gráficos a diferença de amplitude entre os modelos, que indica uma maior ou menor variação
-            na temperatura de acordo com o modelo adotado. Essa temperatura interfere diretamente no pavimento abaixo
-            do telhado verde.</p>
+            <p>Compara a temperatura medida por sensores enterrados a 7 cm dentro da camada de substrato cada modelo. É
+            importante verificar nos gráficos a diferença de amplitude térmica entre os modelos, que indica uma maior
+            ou menor variação na temperatura de acordo com o modelo adotado. Essa temperatura interfere diretamente no
+            pavimento abaixo do telhado verde.</p>
         </div>
         <a href="/">Retornar</a>
         <br/><br/>
@@ -94,12 +95,38 @@
                 </div>
             {% endif %}
         </form>
-        <div style="width:70%;">
+        {% if thermal_amplitude %}
+        <div style="width:70%">
+            <br/>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Modelo</th>
+                        <th scope="col">Menor valor</th>
+                        <th scope="col">Maior</th>
+                        <th scope="col">Amplitude térmica</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for x in thermal_amplitude %}
+                        <tr>
+                            <td>{{ x|get_value_from_dict:'prototype_side' }}</td>
+                            <td>{{ x|get_value_from_dict:'min_temp' }}</td>
+                            <td>{{ x|get_value_from_dict:'max_temp' }}</td>
+                            <td>{{ x|get_value_from_dict:'amplitude' }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <br/>
+        </div>
+        {% endif %}
+        <div style="width:70%">
 		    <canvas id="canvas"></canvas>
 	    </div>
         <script>
-            var ctx = $('#canvas');
-            var myChart = new Chart(ctx, {
+            var canvas = $('#canvas');
+            var myChart = new Chart(canvas, {
                 type: 'line',
                 {% autoescape off %}
                 data: JSON.parse('{{ data }}'),

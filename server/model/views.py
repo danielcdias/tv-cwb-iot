@@ -6,7 +6,6 @@ from datetime import timedelta, datetime
 
 from django.utils import timezone
 from django.http import StreamingHttpResponse
-from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.conf import settings
 
@@ -21,8 +20,8 @@ from model.forms import DataAvailable
 
 logger = logging.getLogger("tvcwb")
 
-# CHART_COLORS = ['red', 'blue', 'green', 'yellow', 'orange', 'purple']
-CHART_COLORS = ['#ff0000', '#0000ff', '#00ff00', '#ffff00', '#ffa500', '#ff00ff', '#00ffff', '#a5a5a5']
+CHART_LINE_STYLES = [['#ff0000', 'triangle'], ['#0000ff', 'circle'], ['#00ff00', 'rect'], ['#ffff00', 'cross'],
+                     ['#ffa500', 'star'], ['#ff00ff', 'rectRounded'], ['#00ffff', 'crossRot'], ['#a5a5a5', 'rectRot']]
 
 
 class SensorsView(SingleTableMixin, FilterView):
@@ -212,19 +211,40 @@ def get_temperature_info(request):
         ', ') if 'dates_available' in request.POST else []
     date_selected = request.POST['date_selected'] if 'date_selected' in request.POST else ''
     data_selected = []
+    # Define date/time interval
     init_dt = date_selected + " 00:00" if date_selected else request.POST['start_timestamp']
     end_dt = date_selected + " 23:59" if date_selected else request.POST['end_timestamp']
     data = analyzer.get_temperature_readings(start_date_filter=init_dt, end_date_filter=end_dt)
+    # Load dates available, if not informed
     if not dates_available:
         for x in data:
             if x['date'] not in dates_available:
                 dates_available.append(x['date'])
+    # Define data selected if not informed
     if not date_selected and dates_available:
         date_selected = dates_available[-1]
+    # Load data from the date selected, if dates available
     if dates_available:
         for x in data:
             if x['date'] == date_selected:
                 data_selected.append(x)
+    # Calculate the min and max temperatures for each prototype side
+    thermal_amplitude = []
+    for ps in ControlBoard.PrototypeSide:
+        max_temp_ps = -999
+        min_temp_ps = 999
+        data_selected_ps = ([a for a in data_selected if a['prototype_side'] == ps[1]])
+        for x in data_selected_ps:
+            temperature = float(x['temperature'].replace(',', '.'))
+            if temperature > max_temp_ps:
+                max_temp_ps = temperature
+            if temperature < min_temp_ps:
+                min_temp_ps = temperature
+        thermal_amplitude.append(
+            {"prototype_side": ps[1], "max_temp": analyzer.get_float_as_str_with_comma(max_temp_ps, 2),
+             "min_temp": analyzer.get_float_as_str_with_comma(min_temp_ps, 2),
+             "amplitude": analyzer.get_float_as_str_with_comma(max_temp_ps - min_temp_ps, 2)})
+    # Load datasets and labels
     labels = []
     datasets = []
     color_index = 0
@@ -238,9 +258,11 @@ def get_temperature_info(request):
             min_temp = temperature
         if not any(a['label'] == x['prototype_side'] for a in datasets):
             datasets.append(
-                {"label": x['prototype_side'], "data": [temperature], "fill": False,
-                 "backgroundColor": CHART_COLORS[color_index],
-                 "borderColor": CHART_COLORS[color_index]})
+                {"label": x['prototype_side'], "data": [temperature], "fill": False, "lineTension": 0.01,
+                 "backgroundColor": CHART_LINE_STYLES[color_index][0],
+                 "borderColor": CHART_LINE_STYLES[color_index][0],
+                 "pointStyle": CHART_LINE_STYLES[color_index][1],
+                 "pointBorderWidth": 4})
             color_index += 1
         else:
             dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']), None)
@@ -248,13 +270,16 @@ def get_temperature_info(request):
         if x['hour'] not in labels:
             labels.append(x['hour'])
     data = {"labels": labels, "datasets": datasets}
+    # Define minimum and maximum ticks for y axis
     min_tick = (int(min_temp) - 1)
     max_tick = (int(max_temp) + 1)
     step_size = 1 if (max_temp - min_temp) <= 10 else 2
     if ((min_tick % 2) == 0 and (max_tick % 2) != 0) or ((min_tick % 2) != 0 and (max_tick % 2) == 0):
         min_tick -= 1
-    result = {"dates_available": dates_available, 'date_selected': date_selected, 'data': json.dumps(data),
-              'max_tick': max_tick, 'min_tick': min_tick, 'step_size': step_size}
+
+    result = {"dates_available": dates_available, "date_selected": date_selected, "data": json.dumps(data),
+              "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
+              "thermal_amplitude": thermal_amplitude}
     logger.debug("Result: {}:".format(result))
     return render(request, 'model/temperature_info.html', result)
 
