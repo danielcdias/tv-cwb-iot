@@ -138,14 +138,14 @@
                     },
                     title: {
                         display: true,
-                        text: 'Variação de temperatura nos modelos em {{date_selected}}',
+                        text: 'Variação da temperatura medida nos modelos, por hora, em {{date_selected}}',
                         fontSize: 20
                     },
                     scales: {
                         yAxes: [{
                             ticks: {
-                                suggestedMin: {{ min_tick }},
-                                suggestedMax: {{ max_tick }},
+                                min: {{ min_tick }},
+                                max: {{ max_tick }},
                                 stepSize: {{ step_size }}
                             },
                             display: true,

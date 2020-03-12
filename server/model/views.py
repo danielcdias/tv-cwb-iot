@@ -271,8 +271,8 @@ def get_temperature_info(request):
             labels.append(x['hour'])
     data = {"labels": labels, "datasets": datasets}
     # Define minimum and maximum ticks for y axis
-    min_tick = (int(min_temp) - 1)
-    max_tick = (int(max_temp) + 1)
+    min_tick = int(min_temp)
+    max_tick = int(max_temp) + 1
     step_size = 1 if (max_temp - min_temp) <= 10 else 2
     if ((min_tick % 2) == 0 and (max_tick % 2) != 0) or ((min_tick % 2) != 0 and (max_tick % 2) == 0):
         min_tick -= 1
