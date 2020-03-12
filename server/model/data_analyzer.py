@@ -211,7 +211,6 @@ def get_temperature_readings(start_date_filter: str = None, end_date_filter: str
                 if save_event:
                     result.append(_get_avg_temperature(same_hour_events, current_date, current_hour))
                     same_hour_events = []
-
     result.sort(key=lambda x: (x['date'][6:10], x['date'][3:5], x['date'][0:2], x['hour']))
     return result
 

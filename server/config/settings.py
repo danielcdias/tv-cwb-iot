@@ -148,7 +148,7 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': 'logs/tv-cwb-django.log',
             'maxBytes': 1024 * 1024 * 5,  # 5 MB
@@ -168,7 +168,7 @@ LOGGING = {
         },
         'tvcwb': {
             'handlers': ['file', 'console', ],
-            'level': 'DEBUG',
+            'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': True,
         },
     },

@@ -1,8 +1,10 @@
 import csv
 import json
 import logging
+import calendar
 
 from datetime import timedelta, datetime
+from copy import deepcopy
 
 from django.utils import timezone
 from django.http import StreamingHttpResponse
@@ -206,28 +208,63 @@ def form_data_available(request):
 
 
 def get_temperature_info(request):
-    logger.debug("request.POST: {}".format(request.POST))
+    logger.debug("get_temperature_info starting - request.POST: {}".format(request.POST))
+    chart_type_by_date = True if 'chart_type' not in request.POST else (
+        True if request.POST['chart_type'] == 'date' else False)
     dates_available = request.POST['dates_available'][1:-1].replace('\'', '').split(
         ', ') if 'dates_available' in request.POST else []
+    months_available = request.POST['months_available'][1:-1].replace('\'', '').split(
+        ', ') if 'months_available' in request.POST else []
     date_selected = request.POST['date_selected'] if 'date_selected' in request.POST else ''
+    month_selected = request.POST['month_selected'] if 'month_selected' in request.POST else ''
     data_selected = []
     # Define date/time interval
-    init_dt = date_selected + " 00:00" if date_selected else request.POST['start_timestamp']
-    end_dt = date_selected + " 23:59" if date_selected else request.POST['end_timestamp']
+    init_dt = (date_selected + " 00:00" if date_selected else request.POST['start_timestamp']) if chart_type_by_date \
+        else ("01/" + month_selected + " 00:00" if month_selected else request.POST['start_timestamp'])
+    end_dt = (date_selected + " 23:59" if date_selected else request.POST['end_timestamp']) if chart_type_by_date \
+        else (_get_end_date_from_month_for_query(month_selected) if month_selected else request.POST['end_timestamp'])
     data = analyzer.get_temperature_readings(start_date_filter=init_dt, end_date_filter=end_dt)
-    # Load dates available, if not informed
+    # Load dates available and/or months_available, if not informed
     if not dates_available:
         for x in data:
             if x['date'] not in dates_available:
                 dates_available.append(x['date'])
-    # Define data selected if not informed
-    if not date_selected and dates_available:
-        date_selected = dates_available[-1]
-    # Load data from the date selected, if dates available
-    if dates_available:
+    if not months_available:
         for x in data:
-            if x['date'] == date_selected:
-                data_selected.append(x)
+            if x['date'][3:] not in months_available:
+                months_available.append(x['date'][3:])
+    # Define date or month selected if not informed
+    if chart_type_by_date:
+        if not date_selected and dates_available:
+            date_selected = dates_available[-1]
+    else:
+        if not month_selected and months_available:
+            month_selected = months_available[-1]
+    # Load data from the date or month selected, if dates available
+    if chart_type_by_date:
+        if dates_available:
+            for x in data:
+                if x['date'] == date_selected:
+                    data_selected.append(x)
+    else:
+        if months_available:
+            data_filtered = []
+            for x in data:
+                if x['date'][3:] == month_selected:
+                    data_filtered.append(x)
+            for ps in ControlBoard.PrototypeSide:
+                for h in range(0, 23):
+                    sum_temp = 0
+                    gen = ([x for x in data_filtered if int(x['hour']) == h and x['prototype_side'] == ps[1]])
+                    data_count = 0;
+                    for x in gen:
+                        sum_temp += float(x['temperature'].replace(',', '.'))
+                        data_count += 1
+                    data_selected.append({"prototype_side": ps[1],
+                                          "date": month_selected,
+                                          "hour": str(h).zfill(2),
+                                          "temperature": analyzer.get_float_as_str_with_comma((sum_temp / data_count),
+                                                                                              2)})
     # Calculate the min and max temperatures for each prototype side
     thermal_amplitude = []
     for ps in ControlBoard.PrototypeSide:
@@ -276,11 +313,14 @@ def get_temperature_info(request):
     step_size = 1 if (max_temp - min_temp) <= 10 else 2
     if ((min_tick % 2) == 0 and (max_tick % 2) != 0) or ((min_tick % 2) != 0 and (max_tick % 2) == 0):
         min_tick -= 1
+    # Defining chart title
+    chart_title = "Variação da temperatura medida nos modelos, por hora, em {}".format(date_selected) if \
+        chart_type_by_date else "Média de temperatura medida nos modelos, por hora, no mês de {}".format(month_selected)
 
-    result = {"dates_available": dates_available, "date_selected": date_selected, "data": json.dumps(data),
-              "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
-              "thermal_amplitude": thermal_amplitude}
-    logger.debug("Result: {}:".format(result))
+    result = {"dates_available": dates_available, "months_available": months_available, "date_selected": date_selected,
+              "data": json.dumps(data), "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
+              "thermal_amplitude": thermal_amplitude, "chart_title": chart_title}
+    logger.debug("get_temperature_info result: {}:".format(result))
     return render(request, 'model/temperature_info.html', result)
 
 
@@ -297,3 +337,12 @@ def get_peak_delay_info(request):
 def get_water_absorption_info(request):
     # TODO Implementar
     return render(request, 'model/not_implemented.html')
+
+
+def _get_end_date_from_month_for_query(month_selected: str):
+    month = int(month_selected[0:2])
+    year = int(month_selected[3:])
+    last_day = calendar.monthrange(year, month)[1]
+    dt = datetime(year, month, last_day)
+    str_date = dt.strftime("%d/%m/%Y")
+    return str_date + " 23:59"
