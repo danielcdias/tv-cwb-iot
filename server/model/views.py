@@ -230,11 +230,10 @@ def get_temperature_info(request):
     end_dt = request.POST['end_timestamp']
     if chart_type_by_date and date_selected:
         init_dt = date_selected + " 00:00"
-        end_dt = date_selected + " 23:00"
+        end_dt = date_selected + " 23:59"
     elif not chart_type_by_date and month_selected:
         init_dt = "01/" + month_selected + " 00:00"
         end_dt = _get_end_date_from_month_for_query(month_selected)
-    logger.debug("init_dt: {}, end_dt: {}".format(init_dt, end_dt))
     data = analyzer.get_temperature_readings(start_date_filter=init_dt, end_date_filter=end_dt)
     if data:
         # Load dates available and/or months_available, if not informed
@@ -266,7 +265,7 @@ def get_temperature_info(request):
                     if x['date'][3:] == month_selected:
                         data_filtered.append(x)
                 for ps in ControlBoard.PrototypeSide:
-                    for h in range(0, 23):
+                    for h in range(0, 24):
                         sum_temp = 0
                         gen = ([x for x in data_filtered if int(x['hour']) == h and x['prototype_side'] == ps[1]])
                         data_count = 0;

@@ -176,7 +176,6 @@ def get_absorption_readings(start_date_filter: str = None, end_date_filter: str 
 
 
 def get_temperature_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
-    logger.debug("get_temperature_readings({}, {})".format(start_date_filter, end_date_filter))
     query_res = SensorReadEvent.objects.all().filter(
         Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_TEMPERATURE)).order_by('timestamp')
     if start_date_filter:
@@ -195,7 +194,6 @@ def get_temperature_readings(start_date_filter: str = None, end_date_filter: str
         for board in boards:
             query_board = query_res.filter(sensor__control_board_id=board.id)
             same_hour_events = []
-            logger.debug("query_board for board: {}, count: {}".format(board.prototype_side_description, len(query_board)))
             for i in range(0, len(query_board)):
                 current_event = query_board[i]
                 current_date = timezone.localtime(current_event.timestamp).strftime(settings.DATE_FORMAT)

@@ -47,6 +47,12 @@
                 text-align: justify;
                 text-justify: inter-word;
             }
+            .input-group-prepend {
+                width : 16%;
+            }
+            .input-group-text {
+                width : 100%;
+            }
         </style>
         <script>
             $(function () {
@@ -176,6 +182,11 @@
                             <span class="input-group-text" id="inputGroup-sizing-default0">Datas com dados disponíveis</span>
                         </div>
                         <select name="date_selected_trf" id="id_date_selected_trf">
+                            {% if date_selected %}
+                                <option value="" disabled>&nbsp;</option>
+                            {% else %}
+                                <option value="" disabled selected>&nbsp;</option>
+                            {% endif %}
                             {% for date_available in dates_available %}
                                 {% if date_selected == date_available%}
                                     <option value="{{date_available}}" selected>{{date_available}}</option>
@@ -199,6 +210,11 @@
                             <span class="input-group-text" id="inputGroup-sizing-default1">Meses com médias disponíveis</span>
                         </div>
                         <select name="month_selected_trf" id="id_month_selected_trf">
+                            {% if month_selected %}
+                                <option value="" disabled>&nbsp;</option>
+                            {% else %}
+                                <option value="" disabled selected>&nbsp;</option>
+                            {% endif %}
                             {% for month_available in months_available %}
                                 {% if month_selected == month_available%}
                                     <option value="{{month_available}}" selected>{{month_available}}</option>
