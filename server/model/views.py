@@ -4,7 +4,6 @@ import logging
 import calendar
 
 from datetime import timedelta, datetime
-from copy import deepcopy
 
 from django.utils import timezone
 from django.http import StreamingHttpResponse
@@ -194,6 +193,11 @@ def form_data_available(request):
             if init_dt >= end_dt:
                 still_valid = False
                 form.add_error('end_timestamp', "A data/hora final deve ser maior que a inicial.")
+            td = end_dt - init_dt
+            diff = (td.days + (td.seconds / 86400))
+            if diff > 365:
+                still_valid = False
+                form.add_error('end_timestamp', "O intervalo de dados não deve ser maior que 1 ano.")
         if still_valid:
             option_selected = int(request.POST['data_type'])
             if option_selected == DataAvailable.DATA_TEMPERATURE:
@@ -204,7 +208,10 @@ def form_data_available(request):
                 return get_peak_delay_info(request)
             elif option_selected == DataAvailable.DATA_WATER_ABSORPTION:
                 return get_water_absorption_info(request)
-    return render(request, 'model/index.html', {'form': form})
+    return render(request, 'model/index.html',
+                  {"form": form,
+                   "start_timestamp": request.POST['start_timestamp'] if 'start_timestamp' in request.POST else '',
+                   "end_timestamp": request.POST['end_timestamp'] if 'end_timestamp' in request.POST else ''})
 
 
 def get_temperature_info(request):
@@ -219,107 +226,122 @@ def get_temperature_info(request):
     month_selected = request.POST['month_selected'] if 'month_selected' in request.POST else ''
     data_selected = []
     # Define date/time interval
-    init_dt = (date_selected + " 00:00" if date_selected else request.POST['start_timestamp']) if chart_type_by_date \
-        else ("01/" + month_selected + " 00:00" if month_selected else request.POST['start_timestamp'])
-    end_dt = (date_selected + " 23:59" if date_selected else request.POST['end_timestamp']) if chart_type_by_date \
-        else (_get_end_date_from_month_for_query(month_selected) if month_selected else request.POST['end_timestamp'])
+    init_dt = request.POST['start_timestamp']
+    end_dt = request.POST['end_timestamp']
+    if chart_type_by_date and date_selected:
+        init_dt = date_selected + " 00:00"
+        end_dt = date_selected + " 23:00"
+    elif not chart_type_by_date and month_selected:
+        init_dt = "01/" + month_selected + " 00:00"
+        end_dt = _get_end_date_from_month_for_query(month_selected)
+    logger.debug("init_dt: {}, end_dt: {}".format(init_dt, end_dt))
     data = analyzer.get_temperature_readings(start_date_filter=init_dt, end_date_filter=end_dt)
-    # Load dates available and/or months_available, if not informed
-    if not dates_available:
-        for x in data:
-            if x['date'] not in dates_available:
-                dates_available.append(x['date'])
-    if not months_available:
-        for x in data:
-            if x['date'][3:] not in months_available:
-                months_available.append(x['date'][3:])
-    # Define date or month selected if not informed
-    if chart_type_by_date:
-        if not date_selected and dates_available:
-            date_selected = dates_available[-1]
-    else:
-        if not month_selected and months_available:
-            month_selected = months_available[-1]
-    # Load data from the date or month selected, if dates available
-    if chart_type_by_date:
-        if dates_available:
+    if data:
+        # Load dates available and/or months_available, if not informed
+        if not dates_available:
             for x in data:
-                if x['date'] == date_selected:
-                    data_selected.append(x)
-    else:
-        if months_available:
-            data_filtered = []
+                if x['date'] not in dates_available:
+                    dates_available.append(x['date'])
+        if not months_available:
             for x in data:
-                if x['date'][3:] == month_selected:
-                    data_filtered.append(x)
-            for ps in ControlBoard.PrototypeSide:
-                for h in range(0, 23):
-                    sum_temp = 0
-                    gen = ([x for x in data_filtered if int(x['hour']) == h and x['prototype_side'] == ps[1]])
-                    data_count = 0;
-                    for x in gen:
-                        sum_temp += float(x['temperature'].replace(',', '.'))
-                        data_count += 1
-                    data_selected.append({"prototype_side": ps[1],
-                                          "date": month_selected,
-                                          "hour": str(h).zfill(2),
-                                          "temperature": analyzer.get_float_as_str_with_comma((sum_temp / data_count),
-                                                                                              2)})
-    # Calculate the min and max temperatures for each prototype side
-    thermal_amplitude = []
-    for ps in ControlBoard.PrototypeSide:
-        max_temp_ps = -999
-        min_temp_ps = 999
-        data_selected_ps = ([a for a in data_selected if a['prototype_side'] == ps[1]])
-        for x in data_selected_ps:
-            temperature = float(x['temperature'].replace(',', '.'))
-            if temperature > max_temp_ps:
-                max_temp_ps = temperature
-            if temperature < min_temp_ps:
-                min_temp_ps = temperature
-        thermal_amplitude.append(
-            {"prototype_side": ps[1], "max_temp": analyzer.get_float_as_str_with_comma(max_temp_ps, 2),
-             "min_temp": analyzer.get_float_as_str_with_comma(min_temp_ps, 2),
-             "amplitude": analyzer.get_float_as_str_with_comma(max_temp_ps - min_temp_ps, 2)})
-    # Load datasets and labels
-    labels = []
-    datasets = []
-    color_index = 0
-    max_temp = -999
-    min_temp = 999
-    for x in data_selected:
-        temperature = float(x['temperature'].replace(',', '.'))
-        if temperature > max_temp:
-            max_temp = temperature
-        if temperature < min_temp:
-            min_temp = temperature
-        if not any(a['label'] == x['prototype_side'] for a in datasets):
-            datasets.append(
-                {"label": x['prototype_side'], "data": [temperature], "fill": False, "lineTension": 0.01,
-                 "backgroundColor": CHART_LINE_STYLES[color_index][0],
-                 "borderColor": CHART_LINE_STYLES[color_index][0],
-                 "pointStyle": CHART_LINE_STYLES[color_index][1],
-                 "pointBorderWidth": 4})
-            color_index += 1
+                if x['date'][3:] not in months_available:
+                    months_available.append(x['date'][3:])
+        # Define date or month selected if not informed
+        if chart_type_by_date:
+            if not date_selected and dates_available:
+                date_selected = dates_available[-1]
         else:
-            dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']), None)
-            datasets[dts_index]['data'].append(temperature)
-        if x['hour'] not in labels:
-            labels.append(x['hour'])
-    data = {"labels": labels, "datasets": datasets}
-    # Define minimum and maximum ticks for y axis
-    min_tick = int(min_temp)
-    max_tick = int(max_temp) + 1
-    step_size = 1 if (max_temp - min_temp) <= 10 else 2
-    if ((min_tick % 2) == 0 and (max_tick % 2) != 0) or ((min_tick % 2) != 0 and (max_tick % 2) == 0):
-        min_tick -= 1
-    # Defining chart title
-    chart_title = "Variação da temperatura medida nos modelos, por hora, em {}".format(date_selected) if \
-        chart_type_by_date else "Média de temperatura medida nos modelos, por hora, no mês de {}".format(month_selected)
-
-    result = {"dates_available": dates_available, "months_available": months_available, "date_selected": date_selected,
-              "data": json.dumps(data), "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
-              "thermal_amplitude": thermal_amplitude, "chart_title": chart_title}
+            if not month_selected and months_available:
+                month_selected = months_available[-1]
+        # Load data from the date or month selected, if dates available
+        if chart_type_by_date:
+            if dates_available:
+                for x in data:
+                    if x['date'] == date_selected:
+                        data_selected.append(x)
+        else:
+            if months_available:
+                data_filtered = []
+                for x in data:
+                    if x['date'][3:] == month_selected:
+                        data_filtered.append(x)
+                for ps in ControlBoard.PrototypeSide:
+                    for h in range(0, 23):
+                        sum_temp = 0
+                        gen = ([x for x in data_filtered if int(x['hour']) == h and x['prototype_side'] == ps[1]])
+                        data_count = 0;
+                        for x in gen:
+                            sum_temp += float(x['temperature'].replace(',', '.'))
+                            data_count += 1
+                        data_selected.append({"prototype_side": ps[1],
+                                              "date": month_selected,
+                                              "hour": str(h).zfill(2),
+                                              "temperature": analyzer.get_float_as_str_with_comma(
+                                                  (sum_temp / data_count),
+                                                  2)})
+        # Calculate the min and max temperatures for each prototype side
+        thermal_amplitude = []
+        for ps in ControlBoard.PrototypeSide:
+            max_temp_ps = -999
+            min_temp_ps = 999
+            data_selected_ps = ([a for a in data_selected if a['prototype_side'] == ps[1]])
+            for x in data_selected_ps:
+                temperature = float(x['temperature'].replace(',', '.'))
+                if temperature > max_temp_ps:
+                    max_temp_ps = temperature
+                if temperature < min_temp_ps:
+                    min_temp_ps = temperature
+            thermal_amplitude.append(
+                {"prototype_side": ps[1], "max_temp": analyzer.get_float_as_str_with_comma(max_temp_ps, 2),
+                 "min_temp": analyzer.get_float_as_str_with_comma(min_temp_ps, 2),
+                 "amplitude": analyzer.get_float_as_str_with_comma(max_temp_ps - min_temp_ps, 2)})
+        # Load datasets and labels
+        labels = []
+        datasets = []
+        color_index = 0
+        max_temp = -999
+        min_temp = 999
+        for x in data_selected:
+            temperature = float(x['temperature'].replace(',', '.'))
+            if temperature > max_temp:
+                max_temp = temperature
+            if temperature < min_temp:
+                min_temp = temperature
+            if not any(a['label'] == x['prototype_side'] for a in datasets):
+                datasets.append(
+                    {"label": x['prototype_side'], "data": [temperature], "fill": False, "lineTension": 0.01,
+                     "backgroundColor": CHART_LINE_STYLES[color_index][0],
+                     "borderColor": CHART_LINE_STYLES[color_index][0],
+                     "pointStyle": CHART_LINE_STYLES[color_index][1],
+                     "pointBorderWidth": 4})
+                color_index += 1
+            else:
+                dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']),
+                                 None)
+                datasets[dts_index]['data'].append(temperature)
+            if x['hour'] not in labels:
+                labels.append(x['hour'])
+        data = {"labels": labels, "datasets": datasets}
+        # Define minimum and maximum ticks for y axis
+        min_tick = int(min_temp)
+        max_tick = int(max_temp) + 1
+        step_size = 1 if (max_temp - min_temp) <= 10 else 2
+        if ((min_tick % 2) == 0 and (max_tick % 2) != 0) or ((min_tick % 2) != 0 and (max_tick % 2) == 0):
+            min_tick -= 1
+        # Defining chart title
+        chart_title = "Variação da temperatura medida nos modelos, por hora, em {}".format(date_selected) if \
+            chart_type_by_date else "Média de temperatura medida nos modelos, por hora, no mês de {}".format(
+            month_selected)
+        result = {"dates_available": dates_available, "months_available": months_available,
+                  "date_selected": date_selected, "month_selected": month_selected,
+                  "data": json.dumps(data), "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
+                  "thermal_amplitude": thermal_amplitude, "chart_title": chart_title,
+                  "start_timestamp": request.POST['start_timestamp'], "end_timestamp": request.POST['end_timestamp']}
+    else:
+        result = {"dates_available": [], "months_available": [], "date_selected": "", "month_selected": "",
+                  "data": [], "max_tick": 0, "min_tick": 0, "step_size": 0,
+                  "thermal_amplitude": [], "chart_title": "", "start_timestamp": request.POST['start_timestamp'],
+                  "end_timestamp": request.POST['end_timestamp']}
     logger.debug("get_temperature_info result: {}:".format(result))
     return render(request, 'model/temperature_info.html', result)
 

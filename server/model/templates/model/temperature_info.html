@@ -50,19 +50,21 @@
         </style>
         <script>
             $(function () {
-                $("#id_date_selected").change(function() {
+                $("#id_date_selected_trf").change(function() {
                     $("#id_wait_date").removeClass('d-none');
                     $("#id_chart_type").val('date');
-                    $("#id_date_selected").prop("disabled", true);
-                    $("#id_month_selected").prop("disabled", true);
-                    $("#temperature_info_form").submit();
+                    $("#id_date_selected").val($(this).val())
+                    $("#id_date_selected_trf").prop("disabled", true);
+                    $("#id_month_selected_trf").prop("disabled", true);
+                    $("#id_temperature_info_form").submit();
                 });
-                $("#id_month_selected").change(function() {
+                $("#id_month_selected_trf").change(function() {
                     $("#id_wait_month").removeClass('d-none');
                     $("#id_chart_type").val('month');
-                    $("#id_date_selected").prop("disabled", true);
-                    $("#id_month_selected").prop("disabled", true);
-                    $("#temperature_info_form").submit();
+                    $("#id_month_selected").val($(this).val())
+                    $("#id_date_selected_trf").prop("disabled", true);
+                    $("#id_month_selected_trf").prop("disabled", true);
+                    $("#id_temperature_info_form").submit();
                 });
             });
         </script>
@@ -75,155 +77,162 @@
         <br/>
         <h4>Comparação de temperatura nos modelos</h4>
         <br/>
-        <div id="data_description">
-            <p>Compara a temperatura medida por sensores enterrados a 7 cm dentro da camada de substrato cada modelo. É
-            importante verificar nos gráficos a diferença de amplitude térmica entre os modelos, que indica uma maior
-            ou menor variação na temperatura de acordo com o modelo adotado. Essa temperatura interfere diretamente no
-            pavimento abaixo do telhado verde.</p>
-        </div>
-        <a href="/">Retornar</a><br/><br/>
-        <div style="width:70%">
-		    <canvas id="canvas"></canvas>
-	    </div>
-        <script>
-            var canvas = $('#canvas');
-            var myChart = new Chart(canvas, {
-                type: 'line',
-                {% autoescape off %}
-                data: JSON.parse('{{ data }}'),
-                {% endautoescape %}
-                options: {
-                    responsive: true,
-                    legend: {
-                        position: 'bottom'
-                    },
-                    title: {
-                        display: true,
-                        text: '{{ chart_title }}',
-                        fontSize: 20
-                    },
-                    scales: {
-                        yAxes: [{
-                            ticks: {
-                                min: {{ min_tick }},
-                                max: {{ max_tick }},
-                                stepSize: {{ step_size }}
-                            },
-                            display: true,
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Temperatura (°C)',
-                                fontSize: 14,
-                                fontStyle: 'bold'
-                            }
-                        }],
-                        xAxes: [{
-                            display: true,
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Horas do dia',
-                                fontSize: 14,
-                                fontStyle: 'bold'
-                            }
-                        }],
-                    }
-                }
-            });
-        </script>
-        {% if thermal_amplitude %}
-        <div style="width:70%">
-            <br/>
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Modelo</th>
-                        <th scope="col">Menor valor</th>
-                        <th scope="col">Maior</th>
-                        <th scope="col">Amplitude térmica</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for x in thermal_amplitude %}
-                        <tr>
-                            <td>{{ x|get_value_from_dict:'prototype_side' }}</td>
-                            <td>{{ x|get_value_from_dict:'min_temp' }}</td>
-                            <td>{{ x|get_value_from_dict:'max_temp' }}</td>
-                            <td>{{ x|get_value_from_dict:'amplitude' }}</td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        {% if data %}
+            <div id="data_description">
+                <p>Compara a temperatura medida por sensores enterrados a 7 cm dentro da camada de substrato cada modelo. É
+                importante verificar nos gráficos a diferença de amplitude térmica entre os modelos, que indica uma maior
+                ou menor variação na temperatura de acordo com o modelo adotado. Essa temperatura interfere diretamente no
+                pavimento abaixo do telhado verde.</p>
+            </div>
             <a href="/">Retornar</a><br/><br/>
-        </div>
-        {% endif %}
-        <p style="font-weight: bold">Selecione abaixo o tipo de gráfico que deseja consultar, considerando leituras diáras ou média mensal.</p>
-        <form action="/" method="post" id="temperature_info_form">
-            {% csrf_token %}
-            <input type="hidden" name="data_type" value="0" />
-            <input type="hidden" name="start_timestamp" value="" />
-            <input type="hidden" name="end_timestamp" value="" />
-            <input type="hidden" name="chart_type" id="id_chart_type"/>
-            <input type="hidden" name="dates_available" value="{{dates_available}}" />
-            <input type="hidden" name="months_available" value="{{months_available}}" />
-            {% if dates_available%}
-                <div class="input-group input-group-sm mb-3">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text" id="inputGroup-sizing-default0">Datas com dados disponíveis</span>
-                    </div>
-                    <select name="date_selected" id="id_date_selected">
-                        {% for date_available in dates_available %}
-                            {% if date_selected == date_available%}
-                                <option value="{{date_available}}" selected>{{date_available}}</option>
-                            {% else %}
-                                <option value="{{date_available}}">{{date_available}}</option>
-                            {% endif %}
+            <div style="width:70%">
+                <canvas id="canvas"></canvas>
+            </div>
+            <script>
+                var canvas = $('#canvas');
+                var myChart = new Chart(canvas, {
+                    type: 'line',
+                    {% autoescape off %}
+                    data: JSON.parse('{{ data }}'),
+                    {% endautoescape %}
+                    options: {
+                        responsive: true,
+                        legend: {
+                            position: 'bottom'
+                        },
+                        title: {
+                            display: true,
+                            text: '{{ chart_title }}',
+                            fontSize: 20
+                        },
+                        scales: {
+                            yAxes: [{
+                                ticks: {
+                                    min: {{ min_tick }},
+                                    max: {{ max_tick }},
+                                    stepSize: {{ step_size }}
+                                },
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Temperatura (°C)',
+                                    fontSize: 14,
+                                    fontStyle: 'bold'
+                                }
+                            }],
+                            xAxes: [{
+                                display: true,
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: 'Horas do dia',
+                                    fontSize: 14,
+                                    fontStyle: 'bold'
+                                }
+                            }],
+                        }
+                    }
+                });
+            </script>
+            {% if thermal_amplitude %}
+            <div style="width:70%">
+                <br/>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Modelo</th>
+                            <th scope="col">Menor valor</th>
+                            <th scope="col">Maior</th>
+                            <th scope="col">Amplitude térmica</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for x in thermal_amplitude %}
+                            <tr>
+                                <td>{{ x|get_value_from_dict:'prototype_side' }}</td>
+                                <td>{{ x|get_value_from_dict:'min_temp' }}</td>
+                                <td>{{ x|get_value_from_dict:'max_temp' }}</td>
+                                <td>{{ x|get_value_from_dict:'amplitude' }}</td>
+                            </tr>
                         {% endfor %}
-                    </select>
-                    <div class="d-none" id="id_wait_date">
-                        <div class="d-flex align-items-center">
-                            &nbsp;&nbsp;
-                            <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true">
-                            </span>&nbsp;<font style="color: #337AB7">Aguarde...</font>
+                    </tbody>
+                </table>
+                <a href="/">Retornar</a><br/><br/>
+            </div>
+            {% endif %}
+            <p style="font-weight: bold">Selecione abaixo o tipo de gráfico que deseja consultar, considerando leituras diáras ou média mensal.</p>
+            <form action="/" method="post" id="id_temperature_info_form">
+                {% csrf_token %}
+                <input type="hidden" name="data_type" value="0" />
+                <input type="hidden" name="start_timestamp" value="{{ start_timestamp }}" />
+                <input type="hidden" name="end_timestamp" value="{{ end_timestamp }}" />
+                <input type="hidden" name="chart_type" id="id_chart_type"/>
+                <input type="hidden" name="dates_available" value="{{dates_available}}" />
+                <input type="hidden" name="months_available" value="{{months_available}}" />
+                <input type="hidden" name="date_selected" id="id_date_selected" />
+                <input type="hidden" name="month_selected" id="id_month_selected" />
+                {% if dates_available%}
+                    <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="inputGroup-sizing-default0">Datas com dados disponíveis</span>
+                        </div>
+                        <select name="date_selected_trf" id="id_date_selected_trf">
+                            {% for date_available in dates_available %}
+                                {% if date_selected == date_available%}
+                                    <option value="{{date_available}}" selected>{{date_available}}</option>
+                                {% else %}
+                                    <option value="{{date_available}}">{{date_available}}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="d-none" id="id_wait_date">
+                            <div class="d-flex align-items-center">
+                                &nbsp;&nbsp;
+                                <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true">
+                                </span>&nbsp;<font style="color: #337AB7">Aguarde...</font>
+                            </div>
                         </div>
                     </div>
-                </div>
-            {% endif %}
-            {% if months_available%}
-                <div class="input-group input-group-sm mb-3">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text" id="inputGroup-sizing-default1">Meses com médias disponíveis</span>
-                    </div>
-                    <select name="month_selected" id="id_month_selected">
-                        {% for month_available in months_available %}
-                            {% if month_selected == month_available%}
-                                <option value="{{month_available}}" selected>{{month_available}}</option>
-                            {% else %}
-                                <option value="{{month_available}}">{{month_available}}</option>
-                            {% endif %}
-                        {% endfor %}
-                    </select>
-                    <div class="d-none" id="id_wait_month">
-                        <div class="d-flex align-items-center">
-                            &nbsp;&nbsp;
-                            <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true">
-                            </span>&nbsp;<font style="color: #337AB7">Aguarde...</font>
+                {% endif %}
+                {% if months_available%}
+                    <div class="input-group input-group-sm mb-3">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text" id="inputGroup-sizing-default1">Meses com médias disponíveis</span>
+                        </div>
+                        <select name="month_selected_trf" id="id_month_selected_trf">
+                            {% for month_available in months_available %}
+                                {% if month_selected == month_available%}
+                                    <option value="{{month_available}}" selected>{{month_available}}</option>
+                                {% else %}
+                                    <option value="{{month_available}}">{{month_available}}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="d-none" id="id_wait_month">
+                            <div class="d-flex align-items-center">
+                                &nbsp;&nbsp;
+                                <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true">
+                                </span>&nbsp;<font style="color: #337AB7">Aguarde...</font>
+                            </div>
                         </div>
                     </div>
-                </div>
-            {% endif %}
-        </form>
-        <br/><br/>
-        <div id="disclaimer">
-            <h6>Considerações</h6>
-            <p>Os valores de temperaturas exibidas nos gráficos são de leituras efetuadas nos sensores de temperatura
-            colocados em cada lado do protótipo. As leituras, que são efetuadas em intervalos de 60 minutos, estão
-            agrupadas por hora dentro da data selecionada. A leitura não ocorre no minuto zero de cada hora, variando
-            de acordo com o último ciclo de início da placa controladora onde o sensor está ligado.</p>
-            <p>Algumas datas não apresentam todas as horas preenchidas devido a um dos seguintes motivos: falha de
-            leitura do sensor, perda de comunicação que gera reinicio da placa controladora, ou ainda queda de
-            energia.</p>
-            <p>As datas com dados disponíveis são filtradas pelas datas inicial e final informadas na página principal.
-            Caso nenhuma data tenha sido informada, todas as datas com dados disponíveis serão apresentadas.</p>
-        </div>
-    </body>
+                {% endif %}
+            </form>
+            <br/><br/>
+            <div id="disclaimer">
+                <h6>Considerações</h6>
+                <p>Os valores de temperaturas exibidas nos gráficos são de leituras efetuadas nos sensores de temperatura
+                colocados em cada lado do protótipo. As leituras, que são efetuadas em intervalos de 60 minutos, estão
+                agrupadas por hora dentro da data selecionada. A leitura não ocorre no minuto zero de cada hora, variando
+                de acordo com o último ciclo de início da placa controladora onde o sensor está ligado.</p>
+                <p>Algumas datas não apresentam todas as horas preenchidas devido a um dos seguintes motivos: falha de
+                leitura do sensor, perda de comunicação que gera reinicio da placa controladora, ou ainda queda de
+                energia.</p>
+                <p>As datas com dados disponíveis são filtradas pelas datas inicial e final informadas na página principal.
+                Caso nenhuma data tenha sido informada, todas as datas com dados disponíveis serão apresentadas.</p>
+            </div>
+        </body>
+    {% else %}
+        <p style="font-weight: bold">Não há informações disponíveis para o intervalo informado.</p>
+        <a href="/">Retornar</a>
+    {% endif %}
 </html>

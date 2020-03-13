@@ -44,7 +44,35 @@
             }
         </style>
         <script>
+            function zeroFill( number, width )
+            {
+                width -= number.toString().length;
+                if ( width > 0 )
+                {
+                    return new Array( width + (/\./.test( number ) ? 2 : 1) ).join( '0' ) + number;
+                }
+                return number + ""; // always return a string
+            }
+            function get_start_date_default() {
+                d = new Date();
+                d.setMonth(d.getMonth() - 3);
+                d.setMinutes(0);
+                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " " +
+                    zeroFill(d.getHours(), 2) + ":" + zeroFill(d.getMinutes(), 2);
+            }
+            function get_end_date_default() {
+                d = new Date();
+                d.setMinutes(0);
+                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " " +
+                    zeroFill(d.getHours(), 2) + ":" + zeroFill(d.getMinutes(), 2);
+            }
             $(function () {
+                if ($("#id_start_timestamp").val() == '') {
+                    $("#id_start_timestamp").val(get_start_date_default());
+                }
+                if ($("#id_end_timestamp").val() == '') {
+                    $("#id_end_timestamp").val(get_end_date_default());
+                }
                 $("#id_start_timestamp").datetimepicker({
                     format: 'd/m/Y H:i',
                 });
@@ -95,7 +123,12 @@
                 <button class="btn btn-primary" type="submit" id="inputGroupFileAddon04">Enviar</button>
             </div>
         </form>
-        <br/><br/>
+        <br/>
+        <h6>Atenção!</h6>
+        <p>Pesquisas com intervalos de datas maiores que 3 meses podem levar até 1 minuto para serem efetuadas.
+        Caso ocorra o erro "504 Gateway Timeout", diminua o intervalo de pesquisa.
+        </p>
+        <h6>Dados sem tratamento</h6>
         <p>
             <a href="{% url 'model:sensors' %}">Leitura de Sensores</a>
             <br/>
