@@ -57,14 +57,12 @@
                 d = new Date();
                 d.setMonth(d.getMonth() - 3);
                 d.setMinutes(0);
-                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " " +
-                    zeroFill(d.getHours(), 2) + ":" + zeroFill(d.getMinutes(), 2);
+                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " 00:00";
             }
             function get_end_date_default() {
                 d = new Date();
                 d.setMinutes(0);
-                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " " +
-                    zeroFill(d.getHours(), 2) + ":" + zeroFill(d.getMinutes(), 2);
+                return zeroFill(d.getDate(), 2) + "/" + zeroFill(d.getMonth() + 1, 2) + "/" + d.getFullYear() + " 00:00";
             }
             $(function () {
                 if ($("#id_start_timestamp").val() == '') {
