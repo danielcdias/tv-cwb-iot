@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from pytz import timezone as tz
 from django.utils import timezone
-from django.db.models import Q
+from django.db.models import Q, QuerySet, DateTimeField
 from django.conf import settings
 
 from model.models import SensorReadEvent, ControlBoard, Sensor
@@ -11,6 +11,14 @@ from copy import deepcopy
 
 DAYS_FOR_NEXT_PEAK_DELAY = 3
 RAIN_QUANTITY_SENSOR_RESET_INTERVAL_IN_MINUTES = 15
+
+VALUE_TYPE_TEMPERATURE = 0
+VALUE_TYPE_WATER_ABSORPTION = 1
+
+TIME_MIN_LIMIT_HOUR = 57 * 60  # minutes * seconds
+TIME_MAX_LIMIT_HOUR = 63 * 60  # minutes * seconds
+
+HOUR_ROUND_AT = 47  # minutes
 
 calibration_tables = []
 
@@ -90,7 +98,15 @@ def get_peak_delay(start_date_filter: str = None, end_date_filter: str = None) -
     return result
 
 
-def get_pluviometer_rain_events(start_date_filter: str = None, end_date_filter: str = None) -> list:
+def get_absorption_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
+    query_res = SensorReadEvent.objects.all().filter(
+        Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_ABSORPTION) & Q(value_read__gt=0)).order_by(
+        'timestamp', 'value_read')
+    result = _transform_data_per_hour(query_res, VALUE_TYPE_WATER_ABSORPTION, start_date_filter, end_date_filter)
+    return result
+
+
+def get_pluviometer_rain_events_daily(start_date_filter: str = None, end_date_filter: str = None) -> list:
     query_res = SensorReadEvent.objects.all().filter(
         Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_AMOUNT)).order_by('timestamp', 'value_read')
     if start_date_filter:
@@ -152,10 +168,9 @@ def get_pluviometer_rain_events(start_date_filter: str = None, end_date_filter: 
     return result
 
 
-def get_absorption_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
+def get_pluviometer_rain_events_hourly(start_date_filter: str = None, end_date_filter: str = None) -> list:
     query_res = SensorReadEvent.objects.all().filter(
-        Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_ABSORPTION) & Q(value_read__gt=0)).order_by(
-        'timestamp', 'value_read')
+        Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_RAIN_AMOUNT)).order_by('timestamp', 'value_read')
     if start_date_filter:
         init_dt = datetime.strptime(start_date_filter, settings.DATETIME_FORMAT)
         if not timezone.is_aware(init_dt):
@@ -166,18 +181,52 @@ def get_absorption_readings(start_date_filter: str = None, end_date_filter: str 
         if not timezone.is_aware(end_dt):
             end_dt = timezone.make_aware(end_dt, tz(settings.TIME_ZONE))
         query_res = query_res.filter(timestamp__lte=end_dt)
+    boards = ControlBoard.objects.all()
     result = []
+    prototype_areas = []
+    for board in boards:
+        prototype_areas.append(
+            {"prototype_side": board.prototype_side_description, "prototype_area": board.prototype_area})
+
+    rain_events = []
     for event in query_res:
-        translated_event = {"prototype_side": event.sensor.control_board.prototype_side_description,
-                            "timestamp": timezone.localtime(event.timestamp).strftime(settings.DATETIME_FORMAT),
-                            "water_absorbed": get_float_as_str_with_comma(_get_absorption_translation(event), 2)}
-        result.append(translated_event)
+        value_converted = (event.sensor.sensor_reading_conversion * event.value_read)
+        entry = {"sensor_id": event.sensor.sensor_id, "timestamp": event.timestamp,
+                 "pluviometer_count": value_converted}
+        rain_events.append(entry)
+
+    same_hour_events = []
+    for i in range(0, len(rain_events)):
+        current_date = timezone.localtime(rain_events[i]['timestamp']).strftime(settings.DATE_FORMAT)
+        current_hour = timezone.localtime(rain_events[i]['timestamp']).strftime('%H')
+        same_hour_events.append(rain_events[i])
+        save_event = False
+        if (i + 1) < len(rain_events):
+            next_event = rain_events[i + 1]
+            next_date = timezone.localtime(next_event['timestamp']).strftime(settings.DATE_FORMAT)
+            next_hour = timezone.localtime(next_event['timestamp']).strftime('%H')
+            if (current_date != next_date) or (current_hour != next_hour):
+                save_event = True
+        else:
+            save_event = True
+        if save_event:
+            result.append(
+                _get_max_precipitation_hourly(same_hour_events, current_date, current_hour, prototype_areas))
+            same_hour_events = []
+    result.sort(key=lambda x: (x['date'][6:10], x['date'][3:5], x['date'][0:2], x['hour']))
+
     return result
 
 
 def get_temperature_readings(start_date_filter: str = None, end_date_filter: str = None) -> list:
     query_res = SensorReadEvent.objects.all().filter(
         Q(sensor__active=True) & Q(sensor__sensor_role=Sensor.ROLE_TEMPERATURE)).order_by('timestamp')
+    result = _transform_data_per_hour(query_res, VALUE_TYPE_TEMPERATURE, start_date_filter, end_date_filter)
+    return result
+
+
+def _transform_data_per_hour(query_res: QuerySet, value_type: int, start_date_filter: str = None,
+                             end_date_filter: str = None, ) -> list:
     if start_date_filter:
         init_dt = datetime.strptime(start_date_filter, settings.DATETIME_FORMAT)
         if not timezone.is_aware(init_dt):
@@ -194,28 +243,48 @@ def get_temperature_readings(start_date_filter: str = None, end_date_filter: str
         for board in boards:
             query_board = query_res.filter(sensor__control_board_id=board.id)
             same_hour_events = []
+            last_hour = -1
             for i in range(0, len(query_board)):
                 current_event = query_board[i]
                 current_date = timezone.localtime(current_event.timestamp).strftime(settings.DATE_FORMAT)
-                current_hour = timezone.localtime(current_event.timestamp).strftime('%H')
+                if last_hour == -1:
+                    last_hour = _get_rounded_hour(current_event.timestamp)
+                if last_hour > 23:
+                    last_hour = -1
+                    continue
                 same_hour_events.append(current_event)
-                save_event = False
+                save_event = True
+                # change_day = False
+                next_hour = -1
                 if (i + 1) < len(query_board):
                     next_event = query_board[i + 1]
-                    next_date = timezone.localtime(next_event.timestamp).strftime(settings.DATE_FORMAT)
-                    next_hour = timezone.localtime(next_event.timestamp).strftime('%H')
-                    if (current_date != next_date) or (current_hour != next_hour):
-                        save_event = True
-                else:
-                    save_event = True
+                    # next_date = timezone.localtime(next_event.timestamp).strftime(settings.DATE_FORMAT)
+                    diff = next_event.timestamp - current_event.timestamp
+                    if diff.seconds < TIME_MIN_LIMIT_HOUR:
+                        save_event = False
+                    # change_day = current_date != next_date
+                    if TIME_MIN_LIMIT_HOUR <= diff.seconds <= TIME_MAX_LIMIT_HOUR:
+                        next_hour = last_hour + 1
+                    elif diff.seconds > TIME_MAX_LIMIT_HOUR:
+                        next_hour = timezone.localtime(next_event.timestamp).hour
                 if save_event:
-                    result.append(_get_avg_temperature(same_hour_events, current_date, current_hour))
+                    if value_type == VALUE_TYPE_TEMPERATURE:
+                        result.append(
+                            _get_avg_temperature_hourly(same_hour_events, current_date, str(last_hour).zfill(2)))
+                    elif value_type == VALUE_TYPE_WATER_ABSORPTION:
+                        result.append(
+                            _get_avg_water_absorption_hourly(same_hour_events, current_date, str(last_hour).zfill(2)))
                     same_hour_events = []
+                if next_hour > -1:
+                    last_hour = next_hour
+                    if last_hour > 23:
+                        last_hour = -1
+                        continue
     result.sort(key=lambda x: (x['date'][6:10], x['date'][3:5], x['date'][0:2], x['hour']))
     return result
 
 
-def _get_avg_temperature(events: list, date_str: str, hour_str: str) -> dict:
+def _get_avg_temperature_hourly(events: list, date_str: str, hour_str: str) -> dict:
     sum_evt = 0
     prototype_side = events[0].sensor.control_board.prototype_side_description
     for e in events:
@@ -225,6 +294,33 @@ def _get_avg_temperature(events: list, date_str: str, hour_str: str) -> dict:
                  "date": date_str,
                  "hour": hour_str,
                  "temperature": get_float_as_str_with_comma(avg_value, 2)}
+    return tmp_event
+
+
+def _get_avg_water_absorption_hourly(events: list, date_str: str, hour_str: str) -> dict:
+    sum_evt = 0
+    prototype_side = events[0].sensor.control_board.prototype_side_description
+    for e in events:
+        sum_evt += _get_absorption_translation(e)
+    avg_value = sum_evt / len(events)
+    tmp_event = {"prototype_side": prototype_side,
+                 "date": date_str,
+                 "hour": hour_str,
+                 "water_absorbed": get_float_as_str_with_comma(avg_value, 2)}
+    return tmp_event
+
+
+def _get_max_precipitation_hourly(events: list, date_str: str, hour_str: str, prototype_areas: list) -> dict:
+    max_evt = 0
+    for e in events:
+        aux = e['pluviometer_count']
+        if aux > max_evt:
+            max_evt = aux
+    tmp_event = {"date": date_str,
+                 "hour": hour_str,
+                 "precipitation": get_float_as_str_with_comma(max_evt, 2)}
+    for area in prototype_areas:
+        tmp_event[area['prototype_side']] = get_float_as_str_with_comma(float(area['prototype_area']) * max_evt, 2)
     return tmp_event
 
 
@@ -266,4 +362,12 @@ def _get_absorption_translation(sensor_reading: SensorReadEvent) -> float:
             break
         percentage_selected = interval.water_percentage
     result = sensor_reading.sensor.control_board.prototype_weight * (percentage_selected / 100)
+    return result
+
+
+def _get_rounded_hour(timestamp: DateTimeField) -> int:
+    ts = timezone.localtime(timestamp)
+    result = ts.hour
+    if ts.minute > HOUR_ROUND_AT:
+        result += 1
     return result

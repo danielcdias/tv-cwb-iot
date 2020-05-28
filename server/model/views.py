@@ -21,8 +21,17 @@ from model.forms import DataAvailable
 
 logger = logging.getLogger("tvcwb")
 
-CHART_LINE_STYLES = [['#ff0000', 'triangle'], ['#0000ff', 'circle'], ['#00ff00', 'rect'], ['#ffff00', 'cross'],
+CHART_LINE_STYLES = [['#0000ff', 'triangle'], ['#ff0000', 'circle'], ['#00ff00', 'rect'], ['#ffff00', 'cross'],
                      ['#ffa500', 'star'], ['#ff00ff', 'rectRounded'], ['#00ffff', 'crossRot'], ['#a5a5a5', 'rectRot']]
+
+CHAR_BAR_STYLES = [['rgba(0,0,255,0.3)', 'rgba(0,0,255,1)'],
+                   ['rgba(255,0,0,0.3)', 'rgba(255,0,0,1)'],
+                   ['rgba(0,255,0,0.3)', 'rgba(0,255,0,1)'],
+                   ['rgba(255,255,0,0.3)', 'rgba(255,255,0,1)'],
+                   ['rgba(255,165,0,0.3)', 'rgba(255,165,0,1)'],
+                   ['rgba(255,0,255,0.3)', 'rgba(255,0,255,1)'],
+                   ['rgba(0,255,255,0.3)', 'rgba(0,255,255,1)'],
+                   ['rgba(165,165,165,0.3)', 'rgba(165,165,165,1)']]
 
 
 class SensorsView(SingleTableMixin, FilterView):
@@ -137,7 +146,8 @@ def get_peak_delay_in_csv(request):
 def get_pluviometer_rain_events_in_csv(request):
     start_date_filter = request.GET.get('start') if request.GET.get('start') else None
     end_date_filter = request.GET.get('end') if request.GET.get('end') else None
-    results = analyzer.get_pluviometer_rain_events(start_date_filter=start_date_filter, end_date_filter=end_date_filter)
+    results = analyzer.get_pluviometer_rain_events_daily(start_date_filter=start_date_filter,
+                                                         end_date_filter=end_date_filter)
     rows = [['Sensor', 'Data', 'Precipitação em litros']]
     if results:
         keys = list(results[0].keys())
@@ -268,16 +278,17 @@ def get_temperature_info(request):
                     for h in range(0, 24):
                         sum_temp = 0
                         gen = ([x for x in data_filtered if int(x['hour']) == h and x['prototype_side'] == ps[1]])
-                        data_count = 0;
+                        data_count = 0
                         for x in gen:
                             sum_temp += float(x['temperature'].replace(',', '.'))
                             data_count += 1
-                        data_selected.append({"prototype_side": ps[1],
-                                              "date": month_selected,
-                                              "hour": str(h).zfill(2),
-                                              "temperature": analyzer.get_float_as_str_with_comma(
-                                                  (sum_temp / data_count),
-                                                  2)})
+                        if data_count > 0:
+                            data_selected.append({"prototype_side": ps[1],
+                                                  "date": month_selected,
+                                                  "hour": str(h).zfill(2),
+                                                  "temperature": analyzer.get_float_as_str_with_comma(
+                                                      (sum_temp / data_count),
+                                                      2)})
         # Calculate the min and max temperatures for each prototype side
         thermal_amplitude = []
         for ps in ControlBoard.PrototypeSide:
@@ -290,36 +301,39 @@ def get_temperature_info(request):
                     max_temp_ps = temperature
                 if temperature < min_temp_ps:
                     min_temp_ps = temperature
-            thermal_amplitude.append(
-                {"prototype_side": ps[1], "max_temp": analyzer.get_float_as_str_with_comma(max_temp_ps, 2),
-                 "min_temp": analyzer.get_float_as_str_with_comma(min_temp_ps, 2),
-                 "amplitude": analyzer.get_float_as_str_with_comma(max_temp_ps - min_temp_ps, 2)})
+            if max_temp_ps != -999 and min_temp_ps != 999:
+                thermal_amplitude.append(
+                    {"prototype_side": ps[1], "max_temp": analyzer.get_float_as_str_with_comma(max_temp_ps, 2),
+                     "min_temp": analyzer.get_float_as_str_with_comma(min_temp_ps, 2),
+                     "amplitude": analyzer.get_float_as_str_with_comma(max_temp_ps - min_temp_ps, 2)})
         # Load datasets and labels
         labels = []
+        for i in range(0, 24):
+            labels.append(str(i))
         datasets = []
         color_index = 0
         max_temp = -999
         min_temp = 999
+        boards = ControlBoard.objects.all()
+        for board in boards:
+            datasets.append(
+                {"label": board.prototype_side_description, "data": ([None] * 24),
+                 "fill": False, "lineTension": 0.01,
+                 "backgroundColor": CHART_LINE_STYLES[color_index][0],
+                 "borderColor": CHART_LINE_STYLES[color_index][0],
+                 "pointStyle": CHART_LINE_STYLES[color_index][1],
+                 "pointBorderWidth": 4,
+                 "spanGaps": False})
+            color_index += 1
         for x in data_selected:
             temperature = float(x['temperature'].replace(',', '.'))
             if temperature > max_temp:
                 max_temp = temperature
             if temperature < min_temp:
                 min_temp = temperature
-            if not any(a['label'] == x['prototype_side'] for a in datasets):
-                datasets.append(
-                    {"label": x['prototype_side'], "data": [temperature], "fill": False, "lineTension": 0.01,
-                     "backgroundColor": CHART_LINE_STYLES[color_index][0],
-                     "borderColor": CHART_LINE_STYLES[color_index][0],
-                     "pointStyle": CHART_LINE_STYLES[color_index][1],
-                     "pointBorderWidth": 4})
-                color_index += 1
-            else:
-                dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']),
-                                 None)
-                datasets[dts_index]['data'].append(temperature)
-            if x['hour'] not in labels:
-                labels.append(x['hour'])
+            dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']),
+                             None)
+            datasets[dts_index]['data'][int(x['hour'])] = temperature
         data = {"labels": labels, "datasets": datasets}
         # Define minimum and maximum ticks for y axis
         min_tick = int(min_temp)
@@ -346,6 +360,13 @@ def get_temperature_info(request):
 
 
 def get_pluviometer_info(request):
+    logger.debug("get_pluviometer_info starting - request.POST: {}".format(request.POST))
+    init_dt = request.POST['start_timestamp']
+    end_dt = request.POST['end_timestamp']
+    data = analyzer.get_pluviometer_rain_events_daily(start_date_filter=init_dt, end_date_filter=end_dt)
+    logger.debug("Data: {}".format(data))
+    logger.debug("Data per hour: {}".format(analyzer.get_pluviometer_rain_events_hourly(
+        start_date_filter=init_dt, end_date_filter=end_dt)))
     # TODO Implementar
     return render(request, 'model/not_implemented.html')
 
@@ -356,8 +377,117 @@ def get_peak_delay_info(request):
 
 
 def get_water_absorption_info(request):
-    # TODO Implementar
-    return render(request, 'model/not_implemented.html')
+    logger.debug("get_water_absorption_info starting - request.POST: {}".format(request.POST))
+    dates_available = request.POST['dates_available'][1:-1].replace('\'', '').split(
+        ', ') if 'dates_available' in request.POST else []
+    date_selected = request.POST['date_selected'] if 'date_selected' in request.POST else ''
+    data_selected = []
+    # Define date/time interval
+    init_dt = request.POST['start_timestamp']
+    end_dt = request.POST['end_timestamp']
+    if date_selected:
+        init_dt = date_selected + " 00:00"
+        end_dt = date_selected + " 23:59"
+    data = analyzer.get_absorption_readings(start_date_filter=init_dt, end_date_filter=end_dt)
+    if data:
+        # Load dates available, if not informed
+        if not dates_available:
+            for x in data:
+                if x['date'] not in dates_available:
+                    dates_available.append(x['date'])
+        # Define date selected if not informed
+        if not date_selected and dates_available:
+            date_selected = dates_available[-1]
+        # Load data from the date or month selected, if dates available
+        if dates_available:
+            for x in data:
+                if x['date'] == date_selected:
+                    data_selected.append(x)
+        # Load datasets and labels for water absorption
+        labels = []
+        for i in range(0, 24):
+            labels.append(str(i))
+        datasets = []
+        color_index = 0
+        max_value = -999
+        boards = ControlBoard.objects.all()
+        for board in boards:
+            datasets.append(
+                {"label": board.prototype_side_description, "data": ([None] * 24),
+                 "backgroundColor": CHAR_BAR_STYLES[color_index][0],
+                 "borderColor": CHAR_BAR_STYLES[color_index][1],
+                 "borderWidth": 1,
+                 "fill": False})
+            color_index += 1
+        for x in data_selected:
+            water_absorbed = float(x['water_absorbed'].replace(',', '.'))
+            if water_absorbed > max_value:
+                max_value = water_absorbed
+            dts_index = next((index for (index, d) in enumerate(datasets) if d["label"] == x['prototype_side']),
+                             None)
+            datasets[dts_index]['data'][int(x['hour'])] = water_absorbed
+        # Load datasets and labels for water precipitation
+        precipitation_data = analyzer.get_pluviometer_rain_events_hourly(start_date_filter=init_dt,
+                                                                         end_date_filter=end_dt)
+        date_start_index = 0
+        date_end_index = 0
+        found_start = False
+        for x in precipitation_data:
+            if not found_start and x['date'] == date_selected:
+                found_start = True
+            if not found_start:
+                date_start_index += 1
+            if found_start and x['date'] != date_selected:
+                break
+            date_end_index += 1
+        boards_values_precipitation = []
+        for board in boards:
+            boards_values_precipitation.append(
+                {"prototype_side": board.prototype_side_description,
+                 "label": "Precipitação " + board.prototype_side_description, "values": []})
+        for h in labels:
+            found_hour = False
+            for i in range(date_start_index, date_end_index):
+                if precipitation_data[i]['hour'] == h:
+                    found_hour = True
+                    for board in boards_values_precipitation:
+                        if precipitation_data[i][board['prototype_side']] != "0,00":
+                            board['values'].append(
+                                float(precipitation_data[i][board['prototype_side']].replace(',', '.')))
+                        else:
+                            board['values'].append(None)
+            if not found_hour:
+                for board in boards_values_precipitation:
+                    board['values'].append(None)
+        index_insert = 0
+        for board in boards_values_precipitation:
+            datasets.insert(index_insert,
+                            {"label": board['label'], "data": board['values'],
+                             "backgroundColor": CHAR_BAR_STYLES[color_index][0],
+                             "borderColor": CHAR_BAR_STYLES[color_index][1],
+                             "borderWidth": 1,
+                             "fill": False})
+            index_insert += 2
+            color_index += 1
+        # Setting labels and datasets
+        data = {"labels": labels, "datasets": datasets}
+        # Define minimum and maximum ticks for y axis
+        min_tick = 0
+        max_tick = int((int(int(max_value) / 5) + 1) * 5)
+        step_size = 5
+        # Defining chart title
+        chart_title = "Variação da água absorvida medida nos modelos, por hora, em {}".format(date_selected)
+        result = {"dates_available": dates_available, "date_selected": date_selected, "data": json.dumps(data),
+                  "max_tick": max_tick, "min_tick": min_tick, "step_size": step_size,
+                  "chart_title": chart_title, "start_timestamp": request.POST['start_timestamp'],
+                  "end_timestamp": request.POST['end_timestamp']}
+    else:
+        result = {"dates_available": [], "months_available": [], "date_selected": "", "month_selected": "",
+                  "data": [], "max_tick": 0, "min_tick": 0, "step_size": 0,
+                  "chart_title": "", "start_timestamp": request.POST['start_timestamp'],
+                  "end_timestamp": request.POST['end_timestamp']}
+    logger.debug("get_water_absorption_info result: {}:".format(result))
+    return render(request, 'model/water_absorption_info.html', result)
 
 
 def _get_end_date_from_month_for_query(month_selected: str):
